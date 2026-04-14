@@ -1,0 +1,1605 @@
+National Dong Hwa University
+Department of Computer Science and Information Engineering (CSIE)
+
+CSIE Undergraduate Project
+
+AI-Driven Network and IoT Device
+Management
+Using Agentic Automation Workflows
+Final Report
+
+Group Members
+
+Supervisor:
+
+Ayanda Sibusiso Dlamini
+
+411221337
+
+Thubelihle Bruno Maseko
+
+411221351
+
+Mlandvo Welcome Nkambule
+
+411221332
+
+Luhlelo Bonkhe Dube
+
+411221323
+
+Prof. Hung-Jui Chang
+
+University: National Dong Hwa University (NDHU)
+Department: Department of Computer Science and Information Engineering (CSIE)
+Date: March 2026
+
+Abstract
+This report presents the academic and technical foundation for the project titled AI-Driven
+Network and IoT Device Management Using Agentic Automation Workflows. Chapter 1
+introduces the problem context, project motivation, aims, significance, scope, and the
+overall structure of the study, based on the source project report provided by the project
+team. Chapter 2 consolidates the developed literature review and examines traditional
+network management, network automation, software-defined and intent-based approaches,
+artificial intelligence in network operations, large language model (LLM)-enabled assistance,
+agentic workflow orchestration, and AI-driven IoT management.
+The report argues that current network and IoT administration remains operationally complex because conventional approaches depend heavily on manual configuration,
+static automation logic, and specialist technical knowledge. The literature indicates that
+AI-assisted systems can reduce this barrier by supporting natural-language interaction,
+contextual diagnostics, and intelligent task decomposition. However, it also shows that
+safe execution remains essential; therefore, deterministic automation, workflow validation,
+and human oversight are still necessary design requirements.
+The combined evidence supports a hybrid architecture in which agentic AI assists
+with intent interpretation, planning, reporting, and diagnostics, while workflow engines
+and automation tooling provide controlled, auditable execution. Subsequent chapters are
+retained as placeholders to preserve the intended final report structure and enable further
+completion in later drafting stages.
+
+i
+
+Table of Contents
+Abstract
+
+i
+
+List of Figures
+
+iv
+
+List of Tables
+
+v
+
+List of Abbreviations
+
+vi
+
+1 Introduction
+1.1 Background of the Study . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+1.2 Statement of the Problem . . . . . . . . . . . . . . . . . . . . . . . . . .
+1.3 Aim and Objectives . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+1.4 Significance of the Study . . . . . . . . . . . . . . . . . . . . . . . . . . .
+1.5 Scope and Limitations . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+1.6 Structure of the Report . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+1
+1
+2
+3
+3
+4
+5
+
+2 Literature Review
+2.1 Traditional Network Management Approaches . . . . . . . . . . . . . . .
+2.2 Network Automation and Programmability . . . . . . . . . . . . . . . . .
+2.3 Intent-Based Networking . . . . . . . . . . . . . . . . . . . . . . . . . . .
+2.4 Artificial Intelligence in Network Management . . . . . . . . . . . . . . .
+2.5 Large Language Models in Network Operations . . . . . . . . . . . . . .
+2.6 Agentic Systems and Workflow Orchestration . . . . . . . . . . . . . . .
+2.7 AI-Driven IoT Network Management . . . . . . . . . . . . . . . . . . . .
+2.8 Research Gaps . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+6
+6
+6
+7
+7
+8
+8
+9
+9
+
+Review Matrix
+
+11
+
+3 System Architecture and Design
+3.1 Overall System Architecture . . . . . . . . . . . . . . . . . . . . . . . . .
+3.1.1 Virtualized Infrastructure Environment . . . . . . . . . . . . . . .
+3.1.2 Virtual Machine Architecture . . . . . . . . . . . . . . . . . . . .
+3.1.3 Layered Interaction Model . . . . . . . . . . . . . . . . . . . . . .
+3.1.4 System Operation Flow . . . . . . . . . . . . . . . . . . . . . . .
+3.1.5 Operational Safety and Human Oversight . . . . . . . . . . . . . .
+3.1.6 Architectural Summary . . . . . . . . . . . . . . . . . . . . . . . .
+3.2 Design Principles . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+14
+14
+14
+14
+15
+16
+16
+17
+17
+
+ii
+
+3.3 Agentic Workflow Design . . . . . . . . . . . . . . . . . . . . . . . . . . .
+3.3.1 Role of the AI Agent . . . . . . . . . . . . . . . . . . . . . . . . .
+3.3.2 Agent Reasoning Model (Observe–Think–Decide–Act) . . . . . . .
+3.4 Automation Orchestration Layer . . . . . . . . . . . . . . . . . . . . . . . .
+3.4.1 The Orchestration Bridge . . . . . . . . . . . . . . . . . . . . . .
+3.4.2 Separation of Reasoning and Execution . . . . . . . . . . . . . . .
+3.4.3 Workflow Execution Model . . . . . . . . . . . . . . . . . . . . . .
+
+19
+19
+19
+21
+22
+22
+22
+
+4 System Implementation
+24
+4.1 Development Environment . . . . . . . . . . . . . . . . . . . . . . . . . .
+24
+4.1.1 Virtualization Platform . . . . . . . . . . . . . . . . . . . . . . . .
+24
+4.1.2 Simulation Tools . . . . . . . . . . . . . . . . . . . . . . . . . . .
+25
+4.1.3 Operating Systems . . . . . . . . . . . . . . . . . . . . . . . . . .
+26
+4.2 Network Testbed Setup . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+26
+4.2.1 Enterprise Network Topology . . . . . . . . . . . . . . . . . . . .
+26
+4.2.2 VLANs and Segmentation . . . . . . . . . . . . . . . . . . . . . .
+27
+4.2.3 Routing and Firewall Configuration . . . . . . . . . . . . . . . . .
+27
+4.3 AI and Agent Implementation . . . . . . . . . . . . . . . . . . . . . . . .
+28
+4.3.1 Model Selection . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+28
+4.3.2 Prompting and Intent Extraction . . . . . . . . . . . . . . . . . .
+29
+4.4 Workflow Automation Implementation . . . . . . . . . . . . . . . . . . .
+29
+4.4.1 Workflow Definitions . . . . . . . . . . . . . . . . . . . . . . . . .
+30
+4.4.2 Integration with Automation Scripts . . . . . . . . . . . . . . . .
+30
+4.5 Python Automation Libraries . . . . . . . . . . . . . . . . . . . . . . . . . 31
+4.5.1 Core Prototype Device Access . . . . . . . . . . . . . . . . . . . . . 31
+4.5.2 Extended Monitoring and Deployment Support . . . . . . . . . .
+32
+4.6 Security and Access Control . . . . . . . . . . . . . . . . . . . . . . . . .
+32
+4.6.1 Prototype-Level Security Controls . . . . . . . . . . . . . . . . . .
+33
+4.6.2 Security Considerations for Real-World Deployment . . . . . . . .
+34
+5 Experimental Evaluation and Results
+5.1 Evaluation Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+37
+37
+
+6 Discussion
+6.1 Discussion Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+38
+38
+
+7 Conclusion and Future Work
+7.1 Conclusion Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+39
+39
+
+iii
+
+List of Figures
+3.1 Virtualized system architecture showing the Proxmox host and deployed
+virtual machines. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+3.2 System interaction flow illustrating the layered process from user input to
+network device management. . . . . . . . . . . . . . . . . . . . . . . . . .
+3.3 Agent reasoning cycle as a continuous process. . . . . . . . . . . . . . . .
+4.1
+
+15
+16
+20
+
+Implementation architecture showing the virtualized Proxmox host, the
+four deployed virtual machines, and the subcomponents hosted within each
+VM (n8n, Docker, Portainer, LLMs, and GNS3 Client). . . . . . . . . . .
+25
+4.2 System interaction flow showing the layered pipeline from user request
+through the chat interface, AI agent, n8n workflow engine, and Python
+automation layer to the GNS3 simulated network environment. . . . . . . . 31
+
+iv
+
+List of Tables
+2.1
+
+Review matrix of the principal sources used in the literature review. . . . . 11
+
+v
+
+List of Abbreviations
+AI
+
+Artificial Intelligence
+
+API
+
+Application Programming Interface
+
+CSIE
+
+Computer Science and Information Engineering
+
+EIGRP
+
+Enhanced Interior Gateway Routing Protocol
+
+GNS3
+
+Graphical Network Simulator-3
+
+IBN
+
+Intent-Based Networking
+
+IoT
+
+Internet of Things
+
+LLM
+
+Large Language Model
+
+MDT
+
+Model-Driven Telemetry
+
+NDHU
+
+National Dong Hwa University
+
+RAG
+
+Retrieval-Augmented Generation
+
+SDN
+
+Software-Defined Networking
+
+SNMP
+
+Simple Network Management Protocol
+
+SSH
+
+Secure Shell
+
+TLS
+
+Transport Layer Security
+
+YANG
+
+Yet Another Next Generation
+
+vi
+
+Chapter 1
+
+Introduction
+1.1 Background of the Study
+Modern digital infrastructure relies heavily on interconnected networks composed of
+routers, switches, servers, and an increasing number of Internet of Things (IoT) devices.
+These infrastructures support critical services across enterprises, research institutions,
+and public organizations. As networks expand in size and complexity, administrators
+must continuously manage device configurations, monitor performance metrics, troubleshoot faults, and enforce security policies. Traditionally, these tasks are performed
+manually through command-line interfaces and specialized management tools. While such
+approaches provide precise control over network devices, they are often time-consuming,
+error-prone, and difficult to scale.
+To address these challenges, the field of network automation has gained increasing
+attention in recent years. Automation tools and frameworks allow administrators to
+programmatically configure devices, collect telemetry data, and perform routine operational tasks. Technologies such as configuration management systems, scripting libraries,
+and workflow orchestration platforms have improved the efficiency of network operations.
+However, most existing automation solutions still require significant technical expertise,
+including knowledge of programming languages, scripting frameworks, and network protocols. Consequently, the adoption of automation technologies remains limited among many
+organizations that lack specialized skills.
+At the same time, advances in Artificial Intelligence (AI), particularly in large
+language models and autonomous software agents, have proven the potential to transform
+complex technical workflows. AI-driven systems can interpret human language, analyze
+contextual information, and generate actions that assist users in solving technical problems.
+The emergence of agentic AI frameworks has further expanded this capability by enabling
+systems to reason about tasks, plan actions, and interact with external tools or platforms.
+Despite these developments, the integration of AI technologies into network management remains limited compared to other areas of computing. Many current solutions
+rely on rule-based automation or static scripts that lack adaptive decision-making capabilities. As networks continue to grow in scale and heterogeneity, there is a need
+for intelligent management systems capable of assisting administrators in performing
+monitoring, diagnostics, and configuration tasks more efficiently.
+This project explores the feasibility of combining agentic AI frameworks with
+workflow-based automation platforms to create a semi-autonomous network management
+
+1
+
+system. The proposed system integrates AI agents capable of interpreting user requests
+with a workflow orchestration layer that validates and executes network operations in a
+controlled environment. Through this architecture, the system aims to support natural
+language interaction while maintaining reliability and operational safety.
+The system will be implemented and evaluated within a simulated network environment using GNS3 and virtual network devices. This environment will replicate realistic
+enterprise networking scenarios and enable controlled experimentation with AI-assisted
+network management techniques.
+
+1.2 Statement of the Problem
+Network management is still a complex and labor-intensive task that requires continuous
+monitoring, troubleshooting, and configuration of multiple devices across distributed
+infrastructures. As networks scale to support modern applications and services, manual
+management approaches become increasingly inefficient and susceptible to human error.
+Even with the availability of automation tools, many existing solutions require administrators to develop and maintain scripts or complex workflows, which can be challenging
+for individuals without extensive programming expertise.
+Furthermore, traditional automation frameworks operate primarily through predefined instructions and lack the ability to interpret user intent or adapt dynamically to
+changing situations. As a result, administrators must still translate operational requirements into specific technical commands or scripts before automation tools can execute
+them. This limitation reduces the accessibility and flexibility of automation technologies
+in network operations.
+While recent advancements in AI and agent-based systems demonstrate the ability
+to interpret natural language and assist with complex tasks, the application of these
+technologies in network infrastructure management remains under explored. Integrating AIdriven reasoning with structured automation workflows presents both technical challenges
+and opportunities for innovation. Without a controlled orchestration layer, AI-generated
+actions may introduce risks to network stability or security.
+Therefore, a key problem addressed in this project is how to design and implement
+an intelligent system that combines AI-driven reasoning with workflow-based validation
+mechanisms to support automated network monitoring, diagnostics, and configuration
+tasks. Such a system must provide a balance between intelligent assistance and controlled
+execution to ensure safe and reliable operation within network environments.
+
+2
+
+1.3 Aim and Objectives
+Aim
+The aim of this project is to design and implement an agentic AI-driven automation
+system capable of assisting with network and IoT device management through intelligent
+interpretation of user requests and controlled execution of automation workflows.
+Objectives
+To achieve this aim, the project will pursue the following objectives:
+• To design a system architecture that integrates agentic AI frameworks with a
+workflow automation platform for network management tasks.
+• To develop a simulated network environment using GNS3 and virtual networking
+devices for testing and evaluating the proposed system.
+• To implement AI agents capable of interpreting natural language commands related
+to network monitoring, diagnostics, and device configuration.
+• To develop automation workflows using the n8n workflow automation platform that
+interact with network devices through programmatic interfaces.
+• To set up a validation and control layer that ensures AI-generated actions are
+executed safely and systematically within the network environment.
+• To evaluate the feasibility and effectiveness of the proposed system through experimental scenarios involving common network management tasks.
+
+1.4 Significance of the Study
+The increasing complexity of modern network infrastructures highlights the need for more
+efficient and intelligent management solutions. By exploring the integration of agentic AI
+frameworks with workflow-based automation platforms, this study contributes to ongoing
+efforts aimed at enhancing the capabilities of network automation systems.
+First, the project demonstrates how AI-driven reasoning can be applied to interpret
+natural language instructions and translate them into structured automation tasks. This
+capability has the potential to reduce the technical barrier associated with traditional
+network automation tools, making automation more accessible to administrators who may
+not possess extensive programming experience.
+Second, the proposed architecture introduces a controlled orchestration layer that
+validates and manages automation workflows before they are executed on network devices.
+
+3
+
+This design approach addresses concerns related to reliability and operational safety when
+incorporating AI-driven decision-making into infrastructure management.
+Third, the project provides a practical prototype that illustrates how AI agents,
+automation workflows, and simulated network environments can be integrated to support
+intelligent infrastructure management. The results of this study may inform future research
+and development efforts in the areas of AI-assisted network operations, autonomous
+systems, and intelligent infrastructure management.
+Finally, the findings may be valuable for both academic and practical contexts.
+From an academic perspective, the project contributes to the exploration of emerging
+technologies at the intersection of artificial intelligence and network engineering. From a
+practical perspective, the system demonstrates how intelligent automation techniques can
+assist network administrators in managing increasingly complex infrastructures.
+
+1.5 Scope and Limitations
+This project focuses on the design and implementation of a prototype system that integrates
+agentic AI frameworks with a workflow automation platform for network management
+tasks. The system will be evaluated within a simulated environment that replicates typical
+enterprise networking scenarios using GNS3 and virtual network devices.
+The scope of the project includes the development of a simulated network topology,
+the implementation of AI agents capable of interpreting user commands, and the creation
+of automation workflows that interact with network devices for monitoring, diagnostics,
+and configuration purposes. The system will provide a chatbot-based interface through
+which users can submit natural language requests that are processed by the AI agent and
+translated into appropriate automation actions.
+However, several limitations are acknowledged. First, the system will operate
+within a simulated network environment rather than a production network infrastructure.
+Consequently, performance results and operational behavior may differ from real-world
+deployments. Second, the project focuses on demonstrating the feasibility of the proposed
+architecture rather than developing a fully autonomous network management system.
+Third, the capabilities of the AI agent depend on the underlying language model and
+predefined workflows, which may limit the system’s ability to handle extraordinarily
+complex or unforeseen scenarios.
+Despite these limitations, the project aims to provide a meaningful demonstration
+of how agentic AI systems can be integrated with automation frameworks to support
+intelligent infrastructure management.
+
+4
+
+1.6 Structure of the Report
+The remainder of this report is organized as follows. Chapter 2 presents a review of related
+literature and existing research in the fields of network automation, artificial intelligence in
+network management, and agent-based systems. This chapter identifies key technological
+developments and highlights gaps that motivate the proposed approach.
+Chapter 3 describes the overall system architecture and methodology of the proposed solution, including the integration of AI agents, workflow automation platforms,
+and the simulated network environment.
+Chapter 4 details the implementation of the system, including the development of
+automation workflows, integration of AI components, and configuration of the experimental
+network environment.
+Chapter 5 presents the experimental evaluation and results obtained from testing
+the system in various network management scenarios.
+Chapter 6 discusses the findings of the study, including system performance,
+limitations, and lessons learned during the implementation process.
+Finally, Chapter 7 concludes the report by summarizing the key contributions of
+the project and outlining potential directions for future research and development.
+
+5
+
+Chapter 2
+
+Literature Review
+2.1 Traditional Network Management Approaches
+Traditional network management has historically relied on command-line configuration,
+device-specific administrative interfaces, and polling-based monitoring systems such as
+SNMP. These methods provide direct control over infrastructure but require substantial
+technical expertise and continuous manual intervention. In complex environments, this
+approach becomes difficult to scale because each device may require individual attention,
+and operational visibility is often fragmented across tools and interfaces.
+The broader networking literature has long recognized these limitations. Kreutz et
+al. argue that conventional IP networks are difficult to configure and reconfigure because
+control logic remains tightly coupled to individual devices and policies are expressed
+through low-level commands [9]. This operational model constrains flexibility and slows
+response to changing network conditions.
+In practical terms, traditional network management remains strong where deterministic control is required, but it performs poorly when operators must act quickly across
+many devices or respond to complex and evolving conditions. These weaknesses motivate
+the transition toward programmable automation and higher-level orchestration.
+
+2.2 Network Automation and Programmability
+Network automation represents a major improvement over purely manual operations. Fuzi
+et al. show that Ansible-based scripting can automate EIGRP deployment, addressing,
+static routing, and verification across multiple routers in a simulated environment [6].
+Their study demonstrates the benefits of infrastructure-as-code approaches, including
+consistency, repeatability, reduced configuration error, and lower administrative effort.
+The significance of this literature lies in its demonstration that network tasks can be
+represented declaratively and executed through reusable automation artifacts. The same
+principle extends to broader programmability paradigms, including SDN and model-driven
+management. Programmability allows administrators to work with abstractions, templates,
+and centralized logic rather than repeating device-by-device command sequences.
+However, automation by itself does not eliminate the need for interpretation and
+decision-making. Script-based approaches work best when tasks and conditions are known
+in advance. They are less effective when operators must interpret ambiguous requests,
+diagnose unfamiliar problems, or select among alternative responses. This limitation
+creates a natural opening for AI-assisted layers above deterministic automation.
+6
+
+2.3 Intent-Based Networking
+Intent-based networking (IBN) attempts to raise the abstraction level of network management by allowing operators to specify desired outcomes rather than low-level commands.
+In principle, an IBN system translates business or operational intent into network policies
+and configuration states. This idea is important because it shifts the focus from syntax
+to objectives and creates a conceptual bridge between human requirements and machine
+execution.
+Although the supplied folder included a document on intent-based networking,
+extractable metadata from that file was incomplete and should be verified before formal
+citation. Even so, the concept remains relevant because later LLM-based network management research can be understood as extending the IBN vision. Where IBN focuses
+on mapping intent into policy, LLM-based systems add natural-language interpretation,
+reasoning over unstructured artifacts, and more flexible task decomposition.
+For the present project, the significance of IBN is primarily conceptual. It supports
+the view that administrators should not always have to encode their goals in low-level
+automation scripts. Instead, systems should be designed to infer and operationalize those
+goals within controlled boundaries.
+
+2.4 Artificial Intelligence in Network Management
+Artificial intelligence in network management predates LLMs and includes applications of
+machine learning, deep learning, reinforcement learning, anomaly detection, and predictive
+analytics. This body of work has focused on traffic analysis, performance optimization,
+fault detection, and decision support. It has helped establish that adaptive methods can
+outperform static rules in environments where patterns change over time.
+Some of the supplied sources, including a recent exploratory preprint and shorter
+overview articles, reflect this broader trend. Although not all of them are equally rigorous,
+they collectively indicate that AI techniques are increasingly used to support predictive
+maintenance, traffic engineering, anomaly detection, and optimization in communication
+networks [10, 4, 8].
+The limitation of much pre-LLM AI work is that it often addresses narrow tasks and
+depends on structured data, carefully defined training pipelines, or specific optimization
+targets. It does not necessarily provide the flexible, conversational, and multi-step
+reasoning capabilities needed for broader operational assistance. This helps explain why
+LLM-based approaches have become an important new area of attention.
+
+7
+
+2.5 Large Language Models in Network Operations
+Large language models introduce a qualitatively different capability into network operations. Hong et al. show that LLMs can interpret natural-language requests, work with
+unstructured sources such as documentation and logs, and support broader management
+and operations workflows [7]. Their survey positions LLMs as a promising interface layer
+between human operators and increasingly complex infrastructures.
+This is directly relevant to the proposed project. An LLM can interpret requests
+such as checking routing health, diagnosing misconfiguration, or generating an initial
+automation plan from natural language. It can also summarize technical findings for users
+in accessible language. In this sense, LLMs can lower the expertise threshold associated
+with traditional automation.
+At the same time, the literature is explicit about the risks. Hallucination, unreliable
+command generation, domain adaptation challenges, and safety concerns are major
+constraints on real-world deployment. LLMs therefore require grounding and bounded
+execution. The most responsible interpretation of the literature is that LLMs should
+augment deterministic tools rather than replace them.
+The short paper by Abane, Battou, and Merzouki further strengthens this point
+by proposing a network management assistant grounded in prompt engineering, retrievalaugmented generation, and knowledge graphs [1]. Its key contribution is not just the use
+of an LLM, but the recognition that practical network assistance must be adapted at
+runtime to actual network state, documentation, and platform-specific knowledge.
+
+2.6 Agentic Systems and Workflow Orchestration
+Agentic systems extend beyond simple question answering by decomposing tasks, selecting
+actions, using tools, and coordinating execution across multiple steps. In the context of
+network management, this means an AI component may interpret user intent, trigger
+diagnostics, analyze output, formulate a remediation plan, and hand off approved steps to
+an automation framework.
+This architectural logic aligns closely with the project under study. The project
+outline proposes specialized functions such as configuration generation, diagnostics, remediation, and reporting, all mediated through workflow orchestration. From a systems
+perspective, workflow tools provide the sequencing, logging, validation, and repeatability
+needed to convert high-level reasoning into auditable execution.
+The literature supplied for orchestration platforms is weaker than the networking
+literature, and some n8n-related sources appear non-academic. Accordingly, the role of
+workflow orchestration should be justified primarily as an engineering necessity rather
+than as a deeply theorized research domain. Nevertheless, the integration of reasoning and
+deterministic workflow execution is one of the most practically important design insights
+8
+
+supported by the overall source set.
+
+2.7 AI-Driven IoT Network Management
+IoT network management introduces additional complexity because devices are heterogeneous, resource-constrained, and often deployed under unstable or lossy conditions.
+Aboubakar et al. provide a strong survey of these issues, showing that efficient IoT
+management must address scalability, fault tolerance, quality of service, energy efficiency,
+security, and self-configuration [2].
+This literature is highly relevant because the project does not focus solely on
+routers and switches. A useful network and IoT management platform must operate
+across different protocols, capabilities, and management surfaces. Static playbooks alone
+are unlikely to accommodate this diversity effectively.
+Du et al., through LLMind 2.0, extend AI-based management into a distributed
+IoT automation setting [5]. Their proposed use of lightweight local LLM agents and
+natural-language machine-to-machine communication is particularly important because
+it addresses problems of scalability, device heterogeneity, and privacy. Although the
+paper is currently a preprint and therefore should be treated with appropriate caution,
+it provides a forward-looking model for how AI-assisted IoT orchestration may evolve
+beyond centralized control.
+Together, these sources suggest that any future-ready implementation should
+account not only for centralized orchestration but also for the possibility of distributed
+intelligence near the device layer.
+
+2.8 Research Gaps
+The literature reveals several gaps that justify the proposed project. First, there remains a
+practical integration gap between deterministic network automation tools and LLM-based
+reasoning systems. While many papers discuss the potential of AI for network operations,
+fewer demonstrate controlled end-to-end architectures that combine natural-language
+interaction, workflow validation, and safe infrastructure execution.
+Second, there is a gap between observability and action. Modern telemetry and
+model-driven monitoring provide rich operational data, but transforming that data into
+trustworthy diagnostic and remediation workflows remains challenging. This is especially
+true when AI components are introduced into the decision loop [3].
+Third, enterprise network automation and IoT device management are often treated
+as separate domains. The proposed project is significant because it attempts to integrate
+both within a unified architecture. Finally, there is limited validation in realistic network
+testbeds of hybrid systems that combine AI interpretation with constrained execution.
+This gap is particularly important for demonstrating feasibility, safety, and operational
+9
+
+usefulness.
+Overall, the literature supports the need for a hybrid architecture in which deterministic automation handles execution, telemetry and documentation provide grounding, and
+AI agents support intent interpretation, diagnosis, planning, and user-facing explanation.
+
+10
+
+Review Matrix
+Table 2.1: Review matrix of the principal sources used in the
+literature review.
+
+Fuzi et al.
+(2021)
+
+Network
+Implementation Shows YAML and Ansible
+automation study using
+can automate EIGRP deAnsible in
+ployment and verification
+GNS3
+with reduced manual effort
+
+11
+
+Topic
+
+Aboubakar et al. IoT man(2022)
+agement
+
+Hong et al.
+(2025)
+
+Method /
+Type
+
+Main Findings
+
+Paper
+
+Peer-reviewed
+survey
+
+Identifies scalability, fault
+tolerance, QoS, energy efficiency, security, and selfconfiguration requirements
+
+Limitations
+
+Relevance
+
+Small-scale lab;
+Core baseline for
+static scripts; no
+deterministic exeadaptive reasoning cution
+Survey only; predates recent LLM
+advances
+
+LLM-based Comprehensive Highlights intent interpre- Survey; limited
+network
+survey
+tation, automation, use of primary experioperations
+unstructured artifacts, and ments
+hallucination risks
+
+Essential for IoT
+requirements framing
+Strong framing
+source for LLMbased network
+management
+
+Paper
+
+Topic
+
+Method /
+Type
+
+Abane et al.
+(2024)
+
+AI network Demo/system Shows runtime adaptation
+assistant
+paper using
+to platform and network
+RAG and
+state is feasible
+knowledgegraph grounding
+
+Main Findings
+
+Limitations
+
+Relevance
+
+Early-stage
+Strong precedent
+demonstrator; lim- for grounded AI
+ited scale evalua- assistance
+tion
+
+12
+
+Du et al. (2025) Distributed arXiv research Argues distributed device
+IoT aupaper
+agents improve scalability,
+tomation
+privacy, and heterogeneity
+handling
+
+Preprint; requires
+further validation
+
+Highly relevant for
+multi-agent IoT
+extensions
+
+Kreutz et al.
+(2014/2015)
+
+SDN
+
+Foundational
+survey
+
+Establishes programmability and separation of
+control and data planes as
+key to easier management
+
+Not AI-focused
+
+Important theoretical background
+for programmable
+control
+
+Cisco (2024)
+
+Telemetry
+
+Vendor white
+paper
+
+Explains streaming teleme- Not peer reviewed; Useful technical
+try, YANG, gNMI/gRPC, vendor-authored
+support for the
+and observability benefits
+monitoring and
+diagnostics layer
+
+Okeda (2025)
+
+AI-driven
+network
+management
+overview
+
+Preprint litera- Broad overview of AI in
+ture review
+network management and
+optimization
+
+Not peer reviewed; Background only;
+secondary source
+not a core authority
+
+Paper
+
+Topic
+
+Method /
+Type
+
+Main Findings
+
+Limitations
+
+Relevance
+
+Das (2024)
+
+AI for IoT
+management
+
+Short article/review
+
+Summarizes AI techniques
+for IoT management
+
+Limited methodological rigor
+
+Peripheral support
+only
+
+Santhosh and
+Gary (2023)
+
+Self-healing Conceptual
+networks
+article
+
+Discusses anomaly detecWeak scholarly
+tion and automated remedi- strength
+ation goals
+
+Use only as weak
+background
+
+13
+
+Chapter 3
+
+System Architecture and Design
+3.1 Overall System Architecture
+The proposed system implements an AI-assisted automation platform for managing network and IoT infrastructure within a simulated enterprise environment. The architecture
+integrates artificial intelligence reasoning, workflow orchestration, and programmable
+network automation tools to enable users to perform monitoring, diagnostics, and configuration tasks using natural language commands.
+This architectural approach was selected to separate natural-language reasoning
+from infrastructure execution, thereby improving controllability, auditability, and operational safety in a semi-autonomous network management environment. By decoupling
+decision-making from execution, the system ensures that AI-generated actions are validated
+before being applied to network devices.
+3.1.1 Virtualized Infrastructure Environment
+To support experimentation and realistic infrastructure behavior, the system is deployed
+within a virtualized lab environment hosted on a Proxmox VE hypervisor. Virtualization
+is employed to enable reproducibility of experiments, isolation of system components,
+efficient hardware utilization, and safe testing of automation workflows without impacting
+production infrastructure.
+Proxmox was selected over simpler single-host configurations due to its ability to
+manage multiple virtual machines with isolated resources, support complex networking
+setups, and provide a scalable environment suitable for simulating enterprise-level systems.
+The Proxmox host acts as the central infrastructure layer responsible for running all
+components of the project environment.
+3.1.2 Virtual Machine Architecture
+Within the Proxmox host, four primary virtual machines are deployed to support the
+system architecture:
+1. Ubuntu Server VM (Automation Stack): This virtual machine hosts the core
+automation services used in the project. It runs Docker containers that deploy
+key services including the n8n workflow automation engine, Portainer container
+management interface, and Cloudflare Tunnel service. This VM functions as the
+automation and orchestration hub, where AI-generated actions are translated into
+structured workflows and executed in a controlled manner.
+14
+
+2. GNS3 VM (Network Simulation Backend): The GNS3 virtual machine
+provides the network simulation environment used to emulate routers, switches,
+firewalls, and other infrastructure devices. GNS3 was selected because it enables
+realistic simulation of enterprise networking environments using virtual appliances,
+allowing the system to operate in conditions that closely resemble real-world network
+deployments.
+3. Ubuntu Desktop VM (Shared Lab Workstation): The Ubuntu Desktop
+virtual machine acts as a shared graphical workstation for the project team. It
+hosts the GNS3 client application and network management tools, enabling users to
+interact visually with the simulated network environment through remote access
+mechanisms such as RDP.
+4. Ollama VM (AI Model Serving Layer): The Ollama virtual machine provides
+the model serving layer for the system. It hosts locally deployed large language
+models (LLMs) used by the AI agent for intent interpretation, decision-making, and
+response generation. This separation of the model serving layer from the automation
+and orchestration components improves modularity, scalability, and performance by
+isolating computationally intensive AI processing from workflow execution.
+The overall virtualized system architecture is illustrated in Figure 3.1.
+
+Figure 3.1: Virtualized system architecture showing the Proxmox host and deployed
+virtual machines.
+
+3.1.3 Layered Interaction Model
+In addition to the physical infrastructure layout, the system follows a layered interaction model that defines how user requests are processed and executed across different
+15
+
+components.
+At a conceptual level, the system operates through the following sequence:
+User → Chat Interface → AI Agent → n8n Workflow Engine → Python Automation
+Layer → GNS3 Environment → Network Devices
+This interaction process is illustrated in Figure 3.2.
+
+Figure 3.2: System interaction flow illustrating the layered process from user input to
+network device management.
+
+3.1.4 System Operation Flow
+The process begins when a user submits a natural language request through a chatbot
+interface. The request is forwarded to the AI agent, which interprets user intent using a
+large language model.
+The AI agent then determines the appropriate action and triggers a corresponding
+workflow in the n8n automation engine. The orchestration layer executes structured
+workflows that invoke Python-based automation scripts, which interact with simulated
+network devices through automation libraries such as Netmiko, Paramiko, and NAPALM.
+The results of the operation are then returned through the same processing chain, allowing
+the AI agent to generate a human-readable response for the user.
+This layered interaction model ensures a clear separation between:
+• user interaction,
+• intelligent decision-making,
+• workflow execution, and
+• device-level control.
+3.1.5 Operational Safety and Human Oversight
+To ensure operational safety, the system incorporates a Human-in-the-Loop (HITL)
+validation mechanism within the automation pipeline.
+
+16
+
+For sensitive operations, such as configuration changes or infrastructure modifications, the system requires manual approval before execution. This ensures that critical
+actions are verified by a human operator before being applied to the network environment,
+reducing the risk of unintended or harmful changes.
+3.1.6 Architectural Summary
+Together, these infrastructure components form a layered architecture in which AI reasoning, automation workflows, and network simulation operate as interconnected but
+decoupled subsystems.
+This design enables the system to combine the flexibility of AI-driven decisionmaking with the reliability and safety of structured automation, making it suitable for
+semi-autonomous network and IoT management.
+
+3.2 Design Principles
+The system architecture was developed according to several key design principles that
+support reliability, extensibility, and operational safety. These principles are directly
+reflected in the structure and operation of the proposed system rather than being applied
+in an abstract manner.
+Modularity
+Modularity is achieved by separating the system into distinct functional layers, including
+the AI reasoning layer, the n8n workflow orchestration layer, and the network automation
+layer.
+This separation allows each component to operate independently while maintaining
+coordinated system functionality. For instance, the AI agent responsible for interpreting
+user intent operates independently of the workflow execution layer, meaning that different
+language models can be integrated or replaced without modifying the n8n workflows.
+Similarly, updates to automation scripts or network libraries do not require changes to
+the AI reasoning component. This modular structure improves maintainability, simplifies
+debugging, and enables incremental development of the system.
+Scalability
+Scalability is supported through the use of virtualization and containerization technologies
+within the system architecture.
+The Proxmox hypervisor enables the deployment of additional virtual machines
+as system requirements grow, while Docker allows services such as n8n to be replicated,
+extended, or redeployed with minimal configuration overhead. This design allows the
+
+17
+
+system to scale from a small experimental lab environment to a more complex enterpriselike setup, supporting multiple network segments, services, and concurrent users.
+Extensibility
+Extensibility is achieved through the flexible integration of new components into the
+system architecture.
+The workflow-based design of n8n allows new automation processes to be introduced
+without disrupting existing workflows. Additionally, the AI layer can integrate different
+language models through the Ollama model-serving environment, enabling the system to
+adapt to evolving AI capabilities. This ensures that the architecture can accommodate
+future enhancements, including new automation tools, additional network devices, and
+expanded IoT use cases.
+Security Model
+The system adopts a Zero Trust security model to protect internal infrastructure while
+enabling remote access.
+To reduce external attack exposure, the architecture uses outbound tunnel-based
+connectivity instead of directly exposing internal services through port forwarding or public
+IP addresses. This ensures that core services such as the Proxmox management interface,
+n8n automation engine, and GNS3 environment remain inaccessible to unsolicited external
+traffic. By eliminating direct inbound connections, the system significantly reduces its
+attack surface and improves overall security.
+Access Control
+Access control is implemented through identity-based authentication using Cloudflare
+Access. Rather than relying solely on network-level access, users must authenticate their
+identity before accessing any system component. This ensures that only authorized team
+members can interact with the infrastructure.
+Authentication occurs before reaching the application layer, providing an additional
+level of protection regardless of whether service endpoints are publicly accessible.
+Protected Communication
+All communication between users and system components is secured using encrypted
+channels. Cloudflare Tunnel provides TLS-based encryption for all traffic, ensuring that
+sensitive data such as authentication credentials, automation commands, and system
+responses cannot be intercepted or modified during transmission. This approach guarantees the confidentiality and integrity of communications while supporting secure remote
+collaboration within the system.
+
+18
+
+3.3 Agentic Workflow Design
+A key feature of the proposed system is the implementation of agentic workflows, which
+combine AI-driven reasoning with structured workflow-based execution.
+In this study, an agentic workflow is defined as a bounded automation process in
+which an AI component interprets user intent, selects an approved workflow path, and
+operates within predefined execution constraints enforced by the orchestration layer.
+This approach enables the system to translate natural language inputs into controlled automation tasks while maintaining operational safety and predictability.
+3.3.1 Role of the AI Agent
+The AI agent serves as the intelligent interface between the user and the automation
+system. Unlike traditional chatbots that generate only conversational responses, the agent
+in this system performs intent interpretation and decision support, enabling it to initiate
+operational workflows.
+The agent does not directly execute commands on network devices. Instead,
+it translates user requests into structured workflow triggers that are processed by the
+orchestration layer, ensuring that all actions are validated before execution.
+3.3.2 Agent Reasoning Model (Observe–Think–Decide–Act)
+The behavior of the AI agent is implemented using a structured reasoning model based
+on the Observe–Think–Decide–Act (OTDA) cycle. Within the system architecture, this
+cycle functions as a formal sub-process governing how user requests are interpreted and
+executed:
+1. Observe – The agent receives and parses the user’s natural language request.
+2. Think – The agent analyzes the request using a large language model to determine
+intent and relevant context.
+3. Decide – The agent selects the appropriate predefined workflow required to satisfy
+the request.
+4. Act – The agent triggers the selected workflow through the n8n orchestration layer.
+This structured reasoning model ensures consistency in decision-making and improves traceability of system actions. The internal reasoning mechanism of the AI agent
+follows this structured Observe–Think–Decide–Act cycle, as illustrated in Figure 3.3.
+Intent Interpretation
+Intent interpretation is performed by the AI model, which extracts actionable meaning
+from user input and maps it to a predefined workflow.
+19
+
+Figure 3.3: Agent reasoning cycle as a continuous process.
+For example, when a user submits a request such as “Check the status of Router
+1 interfaces”, the agent identifies the target device, the required operation, and the
+corresponding diagnostic workflow. The interpreted intent is then converted into a
+structured request that can be processed by the automation layer.
+Task Planning and Decomposition
+Once the intent is identified, the agent decomposes the request into a sequence of executable
+steps aligned with predefined workflows. For instance, a diagnostic request may involve
+identifying the target device, establishing a connection to the device, executing diagnostic
+commands, collecting output data, and forwarding results for interpretation.
+This decomposition ensures that complex tasks are executed in a structured,
+repeatable, and verifiable manner.
+Controlled Execution via Orchestration Layer
+A fundamental design decision in the system is that the AI agent does not directly interact
+with network devices. Instead, all actions are routed through the n8n orchestration layer,
+which functions as a control and validation mechanism.
+This design serves as the primary safeguard against unsafe or uncontrolled AI
+behavior. It ensures that only predefined workflows can be executed, arbitrary or unverified
+commands are prevented, and all actions follow a structured and auditable execution
+process.
+20
+
+This approach directly addresses known limitations of large language models,
+including hallucinated or incorrect command generation, lack of deterministic execution
+behavior, and risks associated with unconstrained autonomous operation.
+By enforcing workflow-based execution, the system maintains operational safety
+while still leveraging AI capabilities.
+Safety Mechanisms and Human-in-the-Loop
+To further enhance operational safety, the system incorporates guardrails and a Humanin-the-Loop (HITL) validation mechanism.
+The system distinguishes between different levels of operational risk:
+• Low-risk operations (e.g., monitoring and diagnostics) are executed automatically.
+• High-risk operations (e.g., configuration changes) require manual approval before
+execution.
+For example, a request such as “Check routing table on Router 1” triggers a
+read-only workflow that executes without user intervention. By contrast, requests such
+as “Update VLAN configuration on Switch 1” or “Modify routing parameters” involve
+altering network state, so the workflow pauses before execution, a human operator reviews
+the requested action, and execution proceeds only after approval.
+This mechanism ensures that potentially disruptive changes are verified before
+being applied, reducing the risk of unintended network instability.
+Feedback Loop and Result Interpretation
+After workflow execution, the system returns the resulting data to the AI agent, forming
+a closed feedback loop. The agent analyzes the technical output, verifies whether the
+requested task was successful, and translates the output into a human-readable response.
+For example, instead of returning raw command output, the system may generate
+a response such as “Router 1 interfaces are operational. No connectivity issues detected.”
+This feedback loop improves usability while maintaining technical accuracy and supports
+continuous interaction between the user and the system.
+
+3.4 Automation Orchestration Layer
+The n8n workflow automation platform serves as the central orchestration layer of the
+system and functions as the automation backbone. It is responsible for executing infrastructure tasks triggered by the AI agent in a structured, controlled, and secure manner.
+Within the system architecture, n8n operates as an intermediary layer between the
+agentic AI framework and the network infrastructure, ensuring that high-level reasoning
+is translated into validated and deterministic technical actions.
+21
+
+3.4.1 The Orchestration Bridge
+The n8n platform serves as the workflow orchestration layer responsible for sequencing,
+validating, and executing approved automation tasks within the system architecture.
+It operates as an intermediary between the AI reasoning layer and the network automation layer, ensuring that high-level decisions generated by the AI agent are translated
+into structured, controlled, and verifiable execution processes.
+3.4.2 Separation of Reasoning and Execution
+A key architectural design principle of the system is the separation between AI-driven
+decision-making and workflow-based execution.
+When a user submits a request, the AI agent interprets the intent and generates
+a structured instruction. This instruction is then passed to the n8n orchestration layer,
+which triggers a predefined workflow corresponding to the requested operation.
+This separation ensures that the AI agent performs interpretation and decision
+support, while the orchestration layer enforces execution constraints and validation. By
+isolating execution from reasoning, the system prevents direct interaction between AIgenerated outputs and network devices, thereby improving reliability and operational
+safety.
+3.4.3 Workflow Execution Model
+Automation in n8n is implemented through structured workflows composed of interconnected nodes that execute tasks in a defined sequence.
+Workflows are typically triggered through API requests or webhooks generated by
+the AI agent. Each workflow consists of multiple nodes representing operations such as
+script execution, API calls, data processing, and interaction with infrastructure services.
+n8n manages the flow of data between nodes, enabling outputs from one step to be
+used as inputs for subsequent steps. Conditional logic mechanisms, such as IF and Switch
+nodes, allow workflows to dynamically adapt based on real-time conditions. For example,
+a workflow may verify device reachability before proceeding with diagnostic operations.
+The collected data is first processed by the n8n orchestration engine before being
+returned to the AI agent. At this stage, n8n performs several preprocessing tasks, including
+logging, error detection, and data formatting into structured forms such as JSON. This
+transformation improves consistency and enables reliable downstream analysis.
+AI Interpretation and Analysis (Interpreted Output)
+Once structured, the data is passed to the AI agent, corresponding to the “Observe” phase
+of the reasoning cycle. The AI agent analyzes the output to verify whether the requested
+task was successful, detect anomalies or failures, and perform basic root cause analysis.
+22
+
+For example, if an interface is reported as down, the AI may infer potential causes
+such as configuration errors or connectivity issues. The final output is then translated
+into a human-readable explanation.
+Feedback and Verification Loop
+To enhance system reliability, the architecture incorporates a feedback and verification
+loop. After execution, results are evaluated against expected outcomes, inconsistencies may
+trigger additional diagnostics or alerts, and the AI agent may initiate further workflows
+based on observed conditions.
+At the current stage of the project, this feedback mechanism is partially implemented. Result evaluation and response generation are operational, while automated
+re-triggering of corrective workflows is under development.
+This approach moves the system toward a closed-loop automation model, where
+actions can be refined iteratively based on real-time network state.
+Final Communication with the User
+Once analysis is complete, the AI agent generates a natural language summary of the
+results and delivers it to the user.
+The response typically includes the actions performed, current network status,
+detected issues, and recommended next steps where applicable. By translating complex
+technical outputs into human-readable insights, the system improves usability while
+maintaining technical accuracy.
+
+23
+
+Chapter 4
+
+System Implementation
+4.1 Development Environment
+This section describes the technical environment used to build, deploy, and test the
+AI-driven network and IoT management prototype. The environment was designed to be
+reproducible, modular, and representative of realistic enterprise networking conditions,
+allowing each subsystem to be developed and evaluated in isolation while maintaining
+coordinated system-level integration.
+4.1.1 Virtualization Platform
+The development environment is built upon Proxmox VE, an open-source hypervisor
+platform that hosts all virtual machines required for the system. This virtualization
+approach was selected to support repeatable testing, component isolation, safe experimentation, and controlled interaction between the simulated network environment and
+the automation layers. By separating each functional subsystem into its own virtual
+machine, the prototype avoids cross-component interference and allows each service to
+be configured, restarted, or replaced independently without disrupting the rest of the
+environment.
+Within the Proxmox host, four primary virtual machines are deployed, each serving
+a distinct role in the system architecture. Together, these components supported the
+simulation, orchestration, execution, and AI-assisted interaction functions required by the
+prototype:
+• Ubuntu Server VM: Hosts the core automation services, including Docker containers running the n8n workflow orchestration engine, Portainer container management
+interface, and supporting backend services. This VM functions as the automation
+and orchestration hub.
+• Ollama VM: Provides the AI model serving layer, hosting locally deployed large language models (LLMs) used by the AI agent for intent interpretation, decision-making,
+and response generation. Separating the model inference layer from the orchestration
+components improves modularity and avoids compute resource contention.
+• GNS3 VM: Provides the network simulation backend, enabling realistic emulation
+of enterprise routing, switching, and VLAN environments using virtual Cisco IOS
+device images.
+24
+
+• Ubuntu Desktop VM: Acts as a shared graphical workstation hosting the GNS3
+client application and network management utilities, allowing team members to
+interact visually with the simulated topology.
+
+Figure 4.1: Implementation architecture showing the virtualized Proxmox host, the four
+deployed virtual machines, and the subcomponents hosted within each VM (n8n, Docker,
+Portainer, LLMs, and GNS3 Client).
+The Ubuntu Server VM runs Ubuntu Server 22.04 LTS as its host operating
+system, selected for its long-term stability, broad package compatibility, and native
+support for Docker, Python automation libraries, and network management tooling.
+Ubuntu provides broad compatibility with the Python-based automation utilities and
+supporting runtime components used in the prototype. If configuration-management
+extensions such as Ansible are incorporated, the platform also supports them without
+additional configuration overhead.
+4.1.2 Simulation Tools
+Network and IoT simulation is implemented through a combination of purpose-built
+emulation platforms. GNS3 serves as the primary network simulation environment,
+enabling the deployment of Cisco IOS router and switch images within a graphical
+topology. GNS3 was selected because it supports integration with real device images and
+provides a realistic command-line interface accessible via SSH, making it directly suitable
+for testing automation scripts that interact with live network operating system instances.
+For structured routing and switching scenarios, Cisco Packet Tracer is also referenced due to its built-in IoT simulation module, which supports sensors, actuators, micro25
+
+controllers, and programmable endpoints communicating through MQTT and HTTPS.
+IoT device simulation is additionally supported by Cooja, the network simulator embedded
+within the Contiki operating system, which provides emulation of resource-constrained
+sensor nodes communicating over low-power wireless protocols. These tools collectively
+allow the testbed to represent both conventional network infrastructure and heterogeneous
+IoT endpoints within a controlled and repeatable environment.
+4.1.3 Operating Systems
+The primary host operating system for all server-side components is Ubuntu Server 22.04
+LTS, selected for its stability, broad package availability, and compatibility with Docker,
+Python automation libraries, and network management tools. The GNS3 server is installed
+on a dedicated Ubuntu VM to isolate simulation workloads from the application stack,
+ensuring that heavy network emulation tasks do not degrade the performance of the
+orchestration and AI services.
+Network device images within GNS3 run Cisco IOS, providing realistic routing,
+switching, and VLAN configuration capabilities that reflect genuine enterprise network
+operating system behaviour. The AI model serving layer runs via Ollama on a dedicated
+VM for local model inference, with optional connectivity to the OpenAI API for GPT-based
+reasoning in configurations where external access is permitted.
+
+4.2 Network Testbed Setup
+The network testbed is designed to represent a realistic multi-layer enterprise environment,
+providing a controlled simulation space in which automation workflows and AI-assisted
+management operations can be evaluated under conditions that closely mirror real-world
+network deployments.
+4.2.1 Enterprise Network Topology
+The enterprise network testbed is structured according to the three-tier enterprise model,
+comprising a core layer, a distribution layer, and an access layer. This topology was
+selected because it provides a realistic structure for evaluating network segmentation, interVLAN routing, and policy-controlled administrative workflows in a simulated enterprise
+environment.
+The core layer consists of two virtual routers interconnected using OSPF as
+the dynamic routing protocol, providing redundant paths and fast convergence. The
+distribution layer introduces Layer 3 switches that perform inter-VLAN routing, while
+the access layer connects simulated end-hosts, servers, and IoT gateway devices. The
+entire topology is constructed within GNS3 and incorporates a simulated internet uplink
+through a NAT cloud node, allowing devices within the testbed to reach external services
+26
+
+where required for AI API calls or package updates.
+All routers and switches are addressed according to a structured IP addressing
+scheme using RFC 1918 private address space, with clearly delineated subnets for each
+functional zone. Network diagrams are maintained in the project repository to document
+the logical and physical topology.
+In the prototype topology, the perimeter boundary is represented by a firewall
+component serving as the entry and exit point of the simulated network. Where a
+FortiGate-based security boundary is described in the implementation context, this refers
+to the edge filtering policy applied within GNS3, implemented using access control lists
+on the perimeter router.
+4.2.2 VLANs and Segmentation
+Network segmentation is implemented through IEEE 802.1Q VLANs to separate traffic
+between functional device groups. The VLAN architecture defines the following segments,
+each serving a distinct role in controlling traffic flow and limiting the potential impact of
+security incidents or device misconfigurations:
+• Management VLAN (VLAN 10): Used exclusively for SSH administrative access
+to network devices and management-plane communication. Restricting management
+traffic to this segment ensures that administrative channels remain isolated from
+user and IoT traffic.
+• Server VLAN (VLAN 20): Hosts virtual servers, the AI orchestration stack,
+and database services. This segment carries the automation and AI reasoning
+components of the system.
+• IoT VLAN (VLAN 30): Isolates IoT sensors, actuators, and gateway nodes from
+the core network, limiting the impact of potential IoT device compromise on broader
+infrastructure.
+• User VLAN (VLAN 40): Reserved for simulated end-user workstations and
+chatbot client access.
+VLAN trunking is configured on uplinks between access and distribution switches
+using 802.1Q encapsulation. Inter-VLAN routing is performed at the distribution layer
+through switched virtual interfaces (SVIs), with access control lists applied to enforce
+traffic policies between segments.
+4.2.3 Routing and Firewall Configuration
+Dynamic routing within the enterprise testbed is provided by OSPF, with all routers
+participating in a single OSPF area (Area 0) for simplicity. Static default routes are
+redistributed into OSPF to propagate reachability to the simulated uplink. BGP is not
+27
+
+configured in the current prototype but is identified as a potential future enhancement for
+multi-site simulation scenarios.
+Firewall policy is implemented using access control lists on the perimeter router
+and reinforced by zone-based policy where Cisco IOS supports it. The following baseline
+rules are enforced across the prototype testbed:
+• Deny unsolicited inbound traffic from the simulated internet zone.
+• Permit established sessions returning from internal initiators.
+• Restrict IoT VLAN devices from directly initiating connections to the server VLAN
+except through defined API endpoints.
+• Permit SSH only from the management VLAN to device management interfaces.
+These rules are provisioned through structured configuration scripts to ensure
+consistency and auditability across the testbed. Where configuration-management tooling
+is used to apply these policies, validation should occur before execution and administrator
+approval should remain mandatory.
+
+4.3 AI and Agent Implementation
+The AI reasoning layer is the component responsible for interpreting natural language
+user requests and determining appropriate automated responses. This section describes
+the model selection strategy, prompting approach, and intent extraction pipeline used in
+the prototype implementation.
+4.3.1 Model Selection
+The AI reasoning layer was designed to support both cloud-connected and locally hosted
+model configurations. In the prototype context, this includes examples such as GPT-based
+cloud access and local model hosting through Ollama. Cloud mode was designed to
+provide higher reasoning quality for complex diagnostic and intent interpretation tasks,
+while local mode prioritises privacy, offline availability, and reduced operational cost for
+environments where external API access is restricted.
+Model selection is informed by research identifying that LLMs used in network
+operations must be capable of working with unstructured sources including documentation,
+command output, and log data. GPT-4-class models are preferred for production-grade
+diagnostics due to stronger instruction-following behaviour and larger context windows,
+while smaller open-weight models such as Mistral 7B are considered for development use
+and latency-constrained scenarios.
+Model inference is abstracted behind a unified API gateway within the n8n workflow engine, allowing the underlying model to be swapped without modifying workflow
+28
+
+logic. This decoupling is an intentional architectural feature that improves the long-term
+maintainability and adaptability of the system as AI model capabilities evolve.
+4.3.2 Prompting and Intent Extraction
+Prompting strategy is central to the reliability of AI-generated outputs in this system.
+Rather than relying on zero-shot prompts, the implementation adopts a structured
+prompting approach that includes three components: a system prompt defining the
+agent role, a contextual grounding block containing current network state and relevant
+documentation excerpts, and a user message carrying the operator’s natural-language
+request.
+The system prompt instructs the model to act as a network operations assistant
+with knowledge of Cisco IOS, OSPF, VLANs, and IoT device management. It explicitly
+instructs the model to avoid fabricating device state, to express uncertainty when context
+is insufficient, and to format its output as structured JSON when workflow integration is
+required.
+Intent extraction is performed in two stages. In the first stage, the model classifies
+the user request into a predefined category such as diagnostic query, configuration change,
+status report, or remediation request. In the second stage, the model extracts the target
+device, the required action, and any relevant parameters, which are then passed to the
+corresponding n8n workflow as structured input. This two-stage design was intended to
+reduce hallucination risk by separating high-level interpretation from parameter extraction,
+ensuring that downstream automation receives well-formed inputs rather than free-form
+text.
+Where implemented, a retrieval-augmented generation (RAG) component is used to
+ground model responses in actual network state. Before each AI call, a context assembly
+module queries the current device inventory, recent telemetry readings, and relevant
+configuration documentation, and injects this information into the prompt context. The
+architecture incorporates this retrieval-based grounding step to improve the relevance
+and accuracy of AI-generated network management responses, aligning with the design
+approach proposed in the related literature.
+
+4.4 Workflow Automation Implementation
+Workflow automation is the operational backbone of the prototype. It translates AIinterpreted user intent into structured, validated, and auditable automation actions against
+the simulated network environment. This section describes the workflow definitions and the
+integration mechanisms that connect the orchestration layer with the Python automation
+scripts.
+
+29
+
+4.4.1 Workflow Definitions
+Workflow automation is implemented using n8n, an open-source workflow orchestration
+platform hosted as a Docker container within the Ubuntu Server VM on Proxmox. This
+choice allowed the project to separate request interpretation, workflow coordination,
+and execution logic within a controllable orchestration environment. Each operational
+capability of the system is encapsulated as a discrete n8n workflow, allowing independent
+development, testing, and modification without disrupting other system components.
+The following core workflows are defined for the prototype implementation:
+• Device Health Diagnostic Workflow: Triggered by a user request through
+the chatbot interface, this workflow issues connectivity tests and interface status
+commands to a specified device, collects output via SSH, passes the results to the AI
+reasoning module for summarisation, and returns a natural-language health report
+to the user.
+• Routing Table Verification Workflow: Executes routing and adjacency inspection commands against target routers, validates expected adjacencies and prefixes
+against a stored baseline, and raises an alert if discrepancies are detected.
+• IoT Device Status Workflow: Queries MQTT broker topics for registered IoT
+sensor endpoints, retrieves the latest telemetry readings, and compiles a device
+health summary indicating online status, last-seen timestamp, and sensor value
+range.
+• Configuration Deployment Workflow: Accepts a structured configuration intent
+from the AI layer and maps it to a controlled execution path. Where configurationmanagement tooling is used, validation occurs before execution and administrator
+approval remains mandatory. This design establishes a direct workflow path from
+user request to automated task handling, reducing the need for administrators to
+interact directly with device CLIs or standalone scripting tools.
+• Periodic Reporting Workflow: Scheduled to execute at defined intervals, this
+workflow collects telemetry data, queries device inventory, and generates a structured
+health report delivered through the chatbot interface.
+Each workflow maintains an execution log recording the trigger source, input
+parameters, execution steps, outputs, and completion status, providing an auditable trail
+of all automated actions performed by the system.
+4.4.2 Integration with Automation Scripts
+n8n workflows integrate with the Python automation layer through a combination of
+HTTPS API calls and subprocess execution. For device communication tasks, n8n invokes
+30
+
+Python scripts via the Execute Command node, passing device identifiers and command
+parameters as arguments. The Python scripts return structured JSON output, which is
+parsed by subsequent n8n nodes for further processing or AI submission.
+The interaction flow established by this integration layer reflects the layered system
+architecture described in Chapter 3. As illustrated in Figure 4.2, the system operates
+as a pipeline in which the user submits a request through the chat interface (Telegram
+or Web UI), the AI Agent performs intent interpretation and decision support, the
+n8n Workflow Engine handles workflow validation and orchestration, and the Python
+Automation Layer executes operations against the GNS3 simulation environment. This
+separation ensures that AI reasoning and infrastructure execution remain decoupled,
+improving both controllability and auditability.
+
+Figure 4.2: System interaction flow showing the layered pipeline from user request through
+the chat interface, AI agent, n8n workflow engine, and Python automation layer to the
+GNS3 simulated network environment.
+Webhooks are used to trigger workflows from the chatbot interface, with incoming
+messages carrying a JSON payload containing the parsed user intent, extracted device
+target, and action type produced by the intent extraction stage. This structured handoff
+ensures that n8n receives actionable, validated input rather than raw natural-language
+text, maintaining the integrity of the automation pipeline.
+
+4.5 Python Automation Libraries
+The Python automation layer serves as the execution interface between the n8n orchestration layer and the simulated network devices in GNS3. It is responsible for establishing
+device connections, issuing operational commands, retrieving output, and returning
+structured results for further processing by the workflow engine and AI module.
+4.5.1 Core Prototype Device Access
+Python-based device access is implemented using Netmiko and NAPALM as the primary
+libraries for SSH-based interaction with network devices hosted in GNS3. Structured,
+scripted device access is essential to the project because it ensures that the automation
+31
+
+layer can interact with network devices using the same protocols and methods as real-world
+network operations, making the prototype a credible evaluation environment.
+Netmiko provides a connection abstraction layer that handles SSH session establishment, command sending, and output retrieval across a wide range of vendor platforms
+including Cisco IOS. Each device session is instantiated using a connection profile drawn
+from the encrypted device inventory. NAPALM supplements Netmiko for structured data
+retrieval, providing normalised getter methods that return device facts, interface status,
+and routing table information as Python dictionaries rather than raw CLI text. This
+structured output reduces the need for text parsing and simplifies downstream processing
+by AI modules and workflow nodes.
+For IoT devices, access is implemented over MQTT using the Paho MQTT client
+library, and over HTTPS using the Requests library for devices exposing REST or
+RESTCONF interfaces. SNMP polling is supported through PySNMP for legacy devices
+that do not provide SSH or REST management interfaces, used primarily for availability
+monitoring and basic interface statistics.
+4.5.2 Extended Monitoring and Deployment Support
+In addition to the core device interaction libraries, the prototype environment includes
+support for broader monitoring and optional deployment capabilities. These components
+may be active in the prototype or may represent architectural extensions available for
+enabling in expanded deployment scenarios:
+• Telemetry and Monitoring: Python scripts execute at scheduled intervals via
+n8n and write collected metrics to a time-series database. Grafana can be connected
+as a visualisation platform to provide dashboards for interface utilisation, OSPF
+adjacency state, and IoT sensor readings.
+• Configuration Management Support: For configuration management and deployment, the prototype proposes or optionally incorporates configuration-management
+tooling such as Ansible, particularly where controlled playbook-driven changes are
+required. Where retained, this capability should be supported by actual prototype
+evidence, with the check-mode dry-run validation step used before any changes are
+committed to execution.
+
+4.6 Security and Access Control
+This section describes the security measures incorporated into the prototype. The security
+content is organised into two subsections. The first covers security controls that are
+directly demonstrable within the prototype environment. The second addresses security considerations that are architecturally relevant but more appropriate to real-world
+deployment contexts rather than the current prototype scope.
+32
+
+4.6.1 Prototype-Level Security Controls
+The following security controls are implemented within the prototype environment and
+reflect the actual configuration of the system as tested and demonstrated.
+Interface and Access Restriction
+Access to the administrative interface is restricted to authorised administrators only. The
+system operates under an administrator-only usage model, where only authenticated team
+members may submit operational requests or trigger workflow execution. Role-based
+access control distinguishes between administrative users, who may trigger configuration
+changes and view all device data, and read-only users, who may only execute diagnostic
+queries and view reports. Authentication occurs before reaching the application layer,
+providing a baseline level of access protection.
+Administrator Approval for Write Operations
+Configuration-related workflow actions are gated behind an explicit administrator approval step before execution. This confirmation mechanism is enforced for all workflows
+categorised as write operations, while read-only diagnostics may proceed without explicit
+approval. This design reflects the human-in-the-loop validation principle described earlier,
+ensuring that potentially disruptive changes are reviewed before being applied to the
+simulated network.
+SSH-Based Device Access and Host Key Verification
+SSH is used exclusively for device management access within the prototype. Host key
+verification is enabled to prevent man-in-the-middle exposure within the testbed network.
+Device connections are established using credentials drawn from the protected device
+inventory rather than plain-text configuration files, ensuring that sensitive authentication
+data is not exposed in workflow definitions, scripts, or version control repositories.
+Internal Network Confinement
+Communication between the n8n orchestration engine, the Python automation layer,
+and the database backend is confined to the internal network bridge where possible,
+limiting exposure to the host network interface. This confinement ensures that core
+automation services are not directly reachable from external networks under normal
+prototype operating conditions.
+Lab-Level HTTPS Exposure
+The chatbot web interface is served over HTTPS through a reverse proxy, with self-signed
+certificates used for isolated laboratory environments. This ensures that communications
+33
+
+within the prototype remain encrypted in transit, protecting authentication credentials
+and automation commands during development and testing.
+VLAN-Based Network Isolation
+Network segmentation enforced through the VLAN architecture described in Section 4.2
+provides an additional layer of isolation within the prototype. IoT device traffic cannot
+reach management or server segments except through explicitly permitted access control
+paths. This is one of the clearest security controls demonstrable within the prototype
+topology, as the VLAN structure is directly observable and testable within the GNS3
+simulation environment.
+4.6.2 Security Considerations for Real-World Deployment
+The following security concepts are architecturally relevant to the system but reflect
+enterprise-grade practices that extend beyond the current prototype scope. They are
+included here to acknowledge the security thinking that informed the design and to guide
+future development or production deployment of the system.
+Dedicated Secrets Management Backend
+For production deployments, device credentials for SSH access and API keys for external
+services should be managed through a dedicated secrets management backend such as
+HashiCorp Vault or an equivalent solution. This would support credential rotation,
+runtime retrieval via a secrets API, and enforcement that no sensitive data is stored
+in plain-text configuration files, workflow definitions, or version control repositories. In
+the current prototype, the principle of protected credential handling is applied, but a
+full enterprise-grade secrets rotation infrastructure is identified as a deployment-stage
+requirement.
+Production TLS Certificate Management
+For internet-accessible deployments, TLS certificate management should be handled
+through a production-grade certificate authority such as Let’s Encrypt, with automated
+renewal and monitoring. In the prototype, self-signed certificates are used for isolated
+laboratory environments, which is appropriate for the current scope. Transitioning to
+publicly trusted certificates would be necessary if the system were to be exposed to
+external users or deployed on a publicly reachable host.
+External API Key Governance
+In a production environment, API keys for cloud AI services and any other external
+integrations should be subject to formal governance processes including key rotation
+34
+
+schedules, access logging, and revocation procedures. In the prototype, keys are stored
+as environment variables injected at container startup, which prevents hardcoding in
+application code but does not provide the full audit trail appropriate for enterprise
+governance.
+MQTT Broker Security for IoT Deployment
+Where IoT telemetry is integrated through MQTT beyond the laboratory environment,
+broker-level authentication and TLS encryption should be enabled on the MQTT broker
+listener to protect sensor data in transit. Client authentication should require username
+and password for all connections. In the prototype, MQTT communication is configured
+within the controlled VLAN-isolated testbed environment; the additional broker security
+controls described here are appropriate for deployments where IoT endpoints communicate
+across less trusted network boundaries.
+Enterprise Jump-Host and Cross-Boundary Access Policy
+For enterprise-scale deployments where management access crosses network trust boundaries, jump-host infrastructure and formalised access policies should be established. This
+would ensure that administrative SSH sessions are routed through controlled access points
+with full session logging, rather than directly from the orchestration layer to managed
+devices. This is identified as a deployment-stage architecture enhancement rather than a
+prototype-level requirement.
+
+Chapter Summary
+This chapter has described the implementation of the AI-driven network and IoT management prototype across five technical areas: the virtualized development environment, the
+enterprise network testbed, the AI and agent implementation, the workflow automation
+layer, and the security framework.
+The Proxmox-based virtualization environment provides the isolation and reproducibility required for systematic prototype evaluation. The GNS3 network testbed
+replicates a realistic multi-tier enterprise topology with VLAN segmentation and OSPFbased routing, offering a credible evaluation environment for automation scenarios. The
+AI reasoning layer supports structured intent extraction through a two-stage prompting
+pipeline, with model inference abstracted behind a unified gateway to support future
+model substitution. The n8n orchestration layer translates AI-interpreted intent into
+controlled, auditable workflow executions, with explicit approval gates enforced for all
+write operations. The Python automation layer provides direct device interaction through
+industry-standard libraries, forming the execution interface between workflows and simulated network devices.
+35
+
+The security framework distinguishes clearly between controls demonstrated within
+the prototype and considerations relevant to production deployment. This distinction
+ensures that the chapter accurately represents the prototype’s scope while acknowledging
+the broader security architecture that would be required in a real-world operational
+context.
+
+36
+
+Chapter 5
+
+Experimental Evaluation and Results
+This chapter is intentionally retained as a placeholder based on the extracted report
+structure. Experimental results will be added in a later drafting stage.
+
+5.1 Evaluation Overview
+Placeholder for test scenarios, observations, and performance results.
+
+37
+
+Chapter 6
+
+Discussion
+This chapter is intentionally retained as a placeholder based on the extracted report
+structure. Discussion content will be added in a later drafting stage.
+
+6.1 Discussion Overview
+Placeholder for interpretation of findings, limitations, and lessons learned.
+
+38
+
+Chapter 7
+
+Conclusion and Future Work
+This chapter is intentionally retained as a placeholder based on the extracted report
+structure. A full concluding synthesis will be added in a later drafting stage.
+
+7.1 Conclusion Overview
+Placeholder for the final summary of contributions and future work directions.
+
+39
+
+Bibliography
+[1] Amar Abane, Abdella Battou, and Mheni Merzouki. An adaptable ai assistant for
+network management. In Conference manuscript / demo paper from provided PDF,
+2024. Bibliographic venue details were incomplete in the provided file; cite with
+caution and verify before final submission.
+[2] Moussa Aboubakar, Mounir Kellil, and Pierre Roux. A review of iot network
+management: Current status and perspectives. Journal of King Saud University –
+Computer and Information Sciences, 34:4163–4176, 2022.
+[3] Cisco. Model driven telemetry white paper, 2024. Vendor white paper; not peer
+reviewed.
+[4] Pragati Das. Ai-based network management for iot devices. Computational Engineering and Technology Innovations, 1(1):44–51, 2024.
+[5] Yuyang Du, Qun Yang, Liujianfu Wang, Jingqi Lin, Hongwei Cui, and Soung Chang
+Liew. Llmind 2.0: Distributed iot automation with natural language m2m communication and lightweight llm agents. arXiv preprint arXiv:2508.13920, 2025. Preprint.
+[6] Mohd Faris Mohd Fuzi, Khairunnisa Abdullah, Iman Hazwam Abd Halim, and Rafiza
+Ruslan. Network automation using ansible for eigrp network. Journal of Computing
+Research and Innovation, 6(4), 2021.
+[7] Jibum Hong, Nguyen Van Tu, and James Won-Ki Hong. A comprehensive survey on
+llm-based network management and operations. International Journal of Network
+Management, 35:e70029, 2025.
+[8] Santhosh K and Gary D. Self-healing networks: Implementing ai-powered mechanisms
+to automatically detect and resolve network issues with minimal human intervention,
+2023. Use with caution; venue rigor and metadata quality appear weak in the provided
+file.
+[9] Diego Kreutz, Fernando M. V. Ramos, Paulo Verissimo, Christian Esteve Rothenberg,
+Siamak Azodolmolky, and Steve Uhlig. Software-defined networking: A comprehensive
+survey. Proceedings of the IEEE, 103(1):14–76, 2015. Provided source file was arXiv
+v1 (2014); canonical journal version commonly cited as 2015.
+[10] Omondi James Okeda. Ai-driven network management and optimization: An exploratory literature review, 2025. ScienceOpen preprint; not peer reviewed.
+
+40
+
+
