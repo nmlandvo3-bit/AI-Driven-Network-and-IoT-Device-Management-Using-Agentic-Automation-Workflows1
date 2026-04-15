@@ -96,18 +96,19 @@ User:
 
 OpenClaw:
 1. match alias `gns3 vm`
-2. detect ambiguity because both VM 104 and 107 are GNS3-related
-3. ask:
-   - `I found two GNS3-related VMs: gns3-vm-primary (104) and gns3-vm-secondary (107). Which one do you want to restart?`
-4. after selection, ask for confirmation
+2. resolve directly to the production GNS3 VM
+3. identify target as `gns3-vm` (VMID 107)
+4. ask for confirmation
 5. send exact structured payload to n8n
+
+If the user instead says `test gns3 vm` or `old gns3 vm`, OpenClaw should resolve that to VMID 104.
 
 ## Suggested structured payload after resolution
 
 ```json
 {
   "intent": "restart_vm",
-  "target_name": "gns3-vm-secondary",
+  "target_name": "gns3-vm",
   "target_alias_used": "gns3 vm",
   "vmid": "107",
   "node": "fmtagency",

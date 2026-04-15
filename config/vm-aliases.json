@@ -60,21 +60,21 @@
       "actions_allowed": ["status", "start", "stop", "reboot", "check_updates"]
     },
     {
-      "canonical_name": "gns3-vm-primary",
+      "canonical_name": "gns3-vm-test",
       "aliases": [
-        "gns3",
-        "gns3 vm",
         "gn3vm",
         "gn3 vm",
-        "network lab vm",
-        "lab vm"
+        "test gns3 vm",
+        "unused gns3 vm",
+        "old gns3 vm",
+        "test lab vm"
       ],
       "vmid": "104",
       "node": "fmtagency",
       "proxmox_name": "GN3VM",
       "platform": "proxmox",
       "type": "qemu",
-      "role": "gns3-lab",
+      "role": "gns3-lab-test",
       "os": "ubuntu",
       "status_last_seen": "stopped",
       "actions_allowed": ["status", "start", "stop", "reboot"]
@@ -120,21 +120,24 @@
       "actions_allowed": ["status", "start", "stop", "reboot", "check_updates"]
     },
     {
-      "canonical_name": "gns3-vm-secondary",
+      "canonical_name": "gns3-vm",
       "aliases": [
-        "gns3 vm 107",
+        "gns3",
+        "gns3 vm",
         "gns3-vm107",
-        "gns3 secondary",
-        "secondary gns3 vm",
+        "gns3 vm 107",
         "gns3 server",
-        "gns3 appliance"
+        "gns3 appliance",
+        "network lab vm",
+        "lab vm",
+        "production gns3 vm"
       ],
       "vmid": "107",
       "node": "fmtagency",
       "proxmox_name": "GNS3-VM107",
       "platform": "proxmox",
       "type": "qemu",
-      "role": "gns3-lab",
+      "role": "gns3-lab-production",
       "os": "ubuntu",
       "status_last_seen": "running",
       "actions_allowed": ["status", "start", "stop", "reboot"]

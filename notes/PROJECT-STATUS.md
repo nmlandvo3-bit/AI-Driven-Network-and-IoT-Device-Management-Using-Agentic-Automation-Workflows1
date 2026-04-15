@@ -6,6 +6,8 @@
 - Confirmed a better upgrade path is to keep n8n as the execution backend and place OpenClaw in front as the natural-language reasoning and confirmation layer.
 - Captured the live Proxmox VM inventory from node `fmtagency`.
 - Added a first VM alias registry at `config/vm-aliases.json` to map conversational names to exact VMIDs and nodes.
+- Updated the GNS3 alias split so VM 107 is the production/default `gns3 vm`, while VM 104 is reserved as a test/unused GNS3 target.
+- Confirmed the target architecture is Telegram -> OpenClaw -> n8n.
 - Added alias clarification rules in `notes/VM-ALIAS-RESOLUTION.md`, including the rule that state-changing actions must never guess ambiguous targets.
 
 
