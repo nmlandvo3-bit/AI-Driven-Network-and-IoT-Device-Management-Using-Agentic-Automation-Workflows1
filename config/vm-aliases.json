@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "last_updated": "2026-04-15",
+  "source": {
+    "platform": "proxmox",
+    "endpoint": "cluster/resources?type=vm",
+    "node": "fmtagency"
+  },
+  "resolution_policy": {
+    "match_order": [
+      "exact_canonical_name",
+      "exact_alias",
+      "normalized_alias",
+      "partial_alias",
+      "clarify_with_admin"
+    ],
+    "on_ambiguous_match": "ask_admin_to_choose_from_candidates",
+    "on_no_match": "ask_admin_using_nearest_defined_aliases",
+    "never_guess_state_changing_targets": true
+  },
+  "vms": [
+    {
+      "canonical_name": "windows-11-vm",
+      "aliases": [
+        "windows 11",
+        "windows 11 vm",
+        "win eleven",
+        "wineleven",
+        "windows vm",
+        "win11"
+      ],
+      "vmid": "102",
+      "node": "fmtagency",
+      "proxmox_name": "WinEleven",
+      "platform": "proxmox",
+      "type": "qemu",
+      "role": "windows-workstation",
+      "os": "windows-11",
+      "status_last_seen": "stopped",
+      "actions_allowed": ["status", "start", "stop", "reboot"]
+    },
+    {
+      "canonical_name": "mlab-ubuntu-server",
+      "aliases": [
+        "mlab ubuntu server",
+        "ubuntu server",
+        "ubuntu server vm",
+        "mlabubuntuserv",
+        "main ubuntu server",
+        "server vm"
+      ],
+      "vmid": "103",
+      "node": "fmtagency",
+      "proxmox_name": "MlabUbuntuServ",
+      "platform": "proxmox",
+      "type": "qemu",
+      "role": "ubuntu-server",
+      "os": "ubuntu",
+      "status_last_seen": "running",
+      "actions_allowed": ["status", "start", "stop", "reboot", "check_updates"]
+    },
+    {
+      "canonical_name": "gns3-vm-primary",
+      "aliases": [
+        "gns3",
+        "gns3 vm",
+        "gn3vm",
+        "gn3 vm",
+        "network lab vm",
+        "lab vm"
+      ],
+      "vmid": "104",
+      "node": "fmtagency",
+      "proxmox_name": "GN3VM",
+      "platform": "proxmox",
+      "type": "qemu",
+      "role": "gns3-lab",
+      "os": "ubuntu",
+      "status_last_seen": "stopped",
+      "actions_allowed": ["status", "start", "stop", "reboot"]
+    },
+    {
+      "canonical_name": "ubuntu-ollama-vm",
+      "aliases": [
+        "ubuntu ollama",
+        "ollama vm",
+        "ubuntu ollama vm",
+        "ubuntu-ollama-vm-25",
+        "ai vm",
+        "llm vm"
+      ],
+      "vmid": "105",
+      "node": "fmtagency",
+      "proxmox_name": "Ubuntu-Ollama-VM-25",
+      "platform": "proxmox",
+      "type": "qemu",
+      "role": "ollama-inference",
+      "os": "ubuntu",
+      "status_last_seen": "stopped",
+      "actions_allowed": ["status", "start", "stop", "reboot", "check_updates"]
+    },
+    {
+      "canonical_name": "ubuntu-desktop-vm",
+      "aliases": [
+        "ubuntu desktop",
+        "ubuntu desktop vm",
+        "desktop ubuntu",
+        "ubuntudesk24.04",
+        "desktop vm",
+        "ubuntu workstation"
+      ],
+      "vmid": "106",
+      "node": "fmtagency",
+      "proxmox_name": "UbuntuDesk24.04",
+      "platform": "proxmox",
+      "type": "qemu",
+      "role": "ubuntu-desktop",
+      "os": "ubuntu-24.04",
+      "status_last_seen": "running",
+      "actions_allowed": ["status", "start", "stop", "reboot", "check_updates"]
+    },
+    {
+      "canonical_name": "gns3-vm-secondary",
+      "aliases": [
+        "gns3 vm 107",
+        "gns3-vm107",
+        "gns3 secondary",
+        "secondary gns3 vm",
+        "gns3 server",
+        "gns3 appliance"
+      ],
+      "vmid": "107",
+      "node": "fmtagency",
+      "proxmox_name": "GNS3-VM107",
+      "platform": "proxmox",
+      "type": "qemu",
+      "role": "gns3-lab",
+      "os": "ubuntu",
+      "status_last_seen": "running",
+      "actions_allowed": ["status", "start", "stop", "reboot"]
+    }
+  ],
+  "clarification_templates": {
+    "ambiguous": "I found multiple possible matches for '{user_term}': {candidates}. Which one do you mean?",
+    "no_match": "I couldn't match '{user_term}' to a known VM. Did you mean one of these: {candidates}?"
+  }
+}
