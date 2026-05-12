@@ -12,6 +12,7 @@ The project was completed as a group. The OpenClaw/NetClaw approach was used for
 
 | Folder | Purpose |
 | --- | --- |
+| `SCENARIOS_AND_EXPECTATIONS.md` | Evaluation scenarios, expected behavior, and evidence checklist for this Systems Infrastructure workflow. |
 | `n8n_workflows/` | Sanitized exported n8n workflow JSON files: main workflow plus all called sub-workflows. |
 | `Scripts Code/` | Extracted scripts and command bodies used inside workflow nodes, including SSH commands and n8n Code node JavaScript. |
 
@@ -41,4 +42,4 @@ Proxmox Admin Bot
     └── Sub-Proxmox-Idle-Lab-Cleanup
 ```
 
-See `n8n_workflows/README.md` and `Scripts Code/SCRIPT-INVENTORY.md` for the detailed exported workflows and extracted scripts.
+See `SCENARIOS_AND_EXPECTATIONS.md` for what to test, and see `n8n_workflows/README.md` plus `Scripts Code/SCRIPT-INVENTORY.md` for the detailed exported workflows and extracted scripts.
