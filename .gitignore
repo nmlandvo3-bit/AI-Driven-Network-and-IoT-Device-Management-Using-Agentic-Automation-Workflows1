@@ -15,3 +15,7 @@ tmp/
 .env.*
 *_token*
 *secret*
+
+# Python cache
+__pycache__/
+*.pyc
