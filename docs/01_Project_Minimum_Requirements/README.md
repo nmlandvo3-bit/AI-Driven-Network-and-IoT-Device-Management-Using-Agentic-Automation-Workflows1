@@ -6,9 +6,9 @@
 
 ## Short description
 
-This project builds a prototype management system where an administrator can use natural-language chat commands to monitor and manage a virtual network and IoT lab. The system combines an AI reasoning layer with deterministic automation workflows so that the AI can understand intent, but sensitive infrastructure actions are still validated, logged, and executed through controlled workflows.
+This project builds a prototype management system where an administrator can use natural-language chat commands to monitor and manage a virtual network and IoT lab. The system combines AI reasoning with deterministic automation workflows so that AI can understand intent, but sensitive infrastructure actions are still validated, logged, and executed through controlled workflows.
 
-The project is implemented in a simulated lab rather than a production network. The lab combines virtual machines on Proxmox, network simulation with GNS3, workflow automation with n8n, and chat-based operation through Telegram/OpenClaw.
+The project is implemented in a simulated lab rather than a production network. The lab combines virtual machines on Proxmox, network simulation with GNS3, workflow automation with n8n, and chat-based operation. Because this is a group project, not every workflow uses the same AI interface: some workflows use OpenClaw/NetClaw as the AI bridge, while other team workflows use n8n AI Agent nodes with Ollama.
 
 ## Main goal
 
@@ -55,7 +55,7 @@ Recommended minimum for this project lab:
 | --- | --- |
 | Hypervisor | Proxmox VE |
 | Workflow engine | n8n |
-| AI/agent interface | OpenClaw / NetClaw-style bridge |
+| AI/agent interface | Mixed by workflow: OpenClaw/NetClaw bridge for some Systems Layer work; n8n AI Agent + Ollama for other workflows |
 | Chat interface | Telegram bot path |
 | Network simulation | GNS3 VM |
 | VM operating systems | Ubuntu Server/Desktop, Windows 11, GNS3 VM, IoT Core VM |
@@ -67,10 +67,10 @@ Recommended minimum for this project lab:
 Admin / Telegram
       |
       v
-OpenClaw AI bridge
-- understand request
-- resolve VM alias
-- ask confirmation if needed
+AI workflow layer
+- OpenClaw/NetClaw bridge for some workflows
+- n8n AI Agent + Ollama for other workflows
+- understand request and prepare structured action
       |
       v
 n8n workflow
@@ -98,7 +98,7 @@ The report uses the **Observe → Think → Decide → Act** style of agentic wo
 
 ## Current actual Proxmox VM inventory
 
-The inventory below was checked through the working n8n/OpenClaw Proxmox status path on **2026-05-12**.
+The inventory below was checked through the working systems-infrastructure Proxmox status path on **2026-05-12**.
 
 | VMID | Name | Node | State | CPU cores | RAM | Disk | Purpose |
 | --- | --- | --- | --- | ---: | --- | --- | --- |
@@ -125,4 +125,4 @@ This level only gives the outer project description and minimum requirements. Th
 
 - Proxmox installation on the old PC;
 - individual VM setup;
-- later levels for n8n, OpenClaw bridge, Telegram, GNS3 topologies, IoT simulation, and final testing.
+- later levels for n8n, AI-agent approaches, Telegram, GNS3 topologies, IoT simulation, and final testing.

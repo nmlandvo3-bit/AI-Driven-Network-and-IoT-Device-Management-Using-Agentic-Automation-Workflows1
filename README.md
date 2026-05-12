@@ -14,12 +14,12 @@ The project combines:
 - **GNS3 VM** for network simulation;
 - **Ubuntu Server VM** for Docker and local n8n automation;
 - **n8n** for deterministic workflow orchestration;
-- **OpenClaw / NetClaw-style AI bridge** for natural-language interpretation and safety checks;
+- **AI workflow layer** implemented differently by group members: some workflows use OpenClaw/NetClaw as the AI bridge, while others use n8n AI Agent nodes with Ollama;
 - **Ollama** for local AI model serving;
 - **Telegram/admin chat** as the intended operator interface;
 - **IoT/MQTT simulation** for IoT management scenarios.
 
-The central safety idea is that AI can understand and plan, but infrastructure actions must pass through controlled workflows, validation, and human confirmation when the action is risky.
+The central safety idea is that AI can understand and plan, but infrastructure actions must pass through controlled workflows, validation, and human confirmation when the action is risky. This is a group project: the Systems Infrastructure and Administration workflow documented here is one piece of the full project, not the only workflow created by the team.
 
 ## High-level architecture
 
@@ -27,7 +27,8 @@ The central safety idea is that AI can understand and plan, but infrastructure a
 Admin / Telegram
       |
       v
-OpenClaw AI bridge
+AI layer
+(OpenClaw bridge or n8n AI Agent + Ollama)
       |
       v
 n8n workflow orchestration
@@ -46,7 +47,7 @@ Start from the lowest level and move upward.
 | 2 | `docs/02_Proxmox_Setup/` | How to install Proxmox VE on an old PC and prepare the hypervisor. |
 | 3 | `docs/03_VMs_Setup/` | One setup folder for each VM currently in Proxmox. |
 | 4 | `docs/04_Technology_Setups/` | Setup guides for GNS3 VM, Docker, n8n, Ollama, MQTT/IoT, and Python automation libraries. |
-| 5 | `docs/05_Evaluation/` | Empty evaluation structure for Network Layer and Systems Layer documentation, including script-code folders. |
+| 5 | `docs/05_Evaluation/` | Evaluation structure for Network Layer and Systems Layer documentation. Our systems workflow files are under `Systems_Layer/Systems_Infrastructure_Administration/`. |
 
 ## Where to find specific setup directions
 
@@ -113,7 +114,7 @@ Use:
 docs/05_Evaluation/
 ```
 
-The evaluation folders are intentionally empty skeletons so each person can document their own tests and place their scripts in the included `Script Code/` folders.
+The evaluation folders are structured so each person can document their own workflows, tests, screenshots, results, and scripts. The Systems Infrastructure and Administration folder contains our workflow operations, n8n exports, and scripts.
 
 Network Layer:
 
@@ -122,7 +123,7 @@ Network Layer:
 
 Systems Layer:
 
-- `Systems_Infrastructure_Administration/`
+- `Systems_Infrastructure_Administration/` — our Proxmox/VM workflow operations, `n8n_workflows/`, and `Scripts Code/`
 - `Systems_Security_Monitoring/`
 
 ## Current actual Proxmox VM inventory

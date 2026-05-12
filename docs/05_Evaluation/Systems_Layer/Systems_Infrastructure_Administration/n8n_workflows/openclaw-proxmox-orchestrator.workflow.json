@@ -1,0 +1,342 @@
+{
+  "name": "OpenClaw Proxmox Orchestrator",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "openclaw-proxmox-orchestrator",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-openclaw-proxmox-orchestrator",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-1000, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\nconst intent = String(body.intent || '').trim();\nconst target = body.target || null;\nconst confirmed = !!body.confirmed;\nconst requiresConfirmation = !!body.requires_confirmation;\n\nreturn [{ json: {\n  source: body.source || 'openclaw',\n  channel: body.channel || 'telegram',\n  user_id: body.user_id || null,\n  user_name: body.user_name || null,\n  raw_text: body.raw_text || '',\n  intent,\n  target,\n  confirmed,\n  requires_confirmation: requiresConfirmation,\n  request_id: body.request_id || null\n}}];"
+      },
+      "id": "parse-openclaw-request",
+      "name": "Parse OpenClaw Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-760, 300]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 6,
+        "output": "={{\n  $json.intent === 'list_vm_status' ? 0 :\n  $json.intent === 'get_vm_status' ? 1 :\n  $json.intent === 'get_all_vm_ips' ? 2 :\n  $json.intent === 'start_vm' ? 3 :\n  $json.intent === 'stop_vm' ? 4 :\n  $json.intent === 'reboot_vm' ? 5 :\n  -1\n}}"
+      },
+      "id": "route-intent",
+      "name": "Route Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [-520, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources?type=vm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "PVEAPIToken=root@pam!statusbot=26fb88b6-e3d1-4627-be33-c5b9669c663b"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "http-list-vms",
+      "name": "List VMs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-240, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const vms = Array.isArray($json.data) ? $json.data : [];\nreturn [{ json: { success: true, intent: 'list_vm_status', count: vms.length, data: vms.map(vm => ({ vmid: String(vm.vmid), name: vm.name, node: vm.node, status: vm.status, type: vm.type })) } }];"
+      },
+      "id": "format-list-vms",
+      "name": "Format VM List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [20, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-list-vms",
+      "name": "Respond List VMs",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [280, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources?type=vm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "PVEAPIToken=root@pam!statusbot=26fb88b6-e3d1-4627-be33-c5b9669c663b"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "http-get-vm-status",
+      "name": "Fetch VMs For Single Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-240, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $('Parse OpenClaw Request').first().json;\nconst target = req.target || {};\nconst vmid = String(target.vmid || '');\nconst vms = Array.isArray($json.data) ? $json.data : [];\nconst match = vms.find(vm => String(vm.vmid) === vmid);\nif (!match) { return [{ json: { success: false, intent: 'get_vm_status', error: 'vm_not_found', target } }]; }\nreturn [{ json: { success: true, intent: 'get_vm_status', target, data: { vmid: String(match.vmid), name: match.name, node: match.node, status: match.status, type: match.type } } }];"
+      },
+      "id": "format-single-vm-status",
+      "name": "Format Single VM Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [20, 180]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-single-vm-status",
+      "name": "Respond Single VM Status",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [280, 180]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": false,\n  \"intent\": \"get_all_vm_ips\",\n  \"error\": \"not_implemented_yet\",\n  \"message\": \"Workflow skeleton created, IP fan-out branch pending implementation\"\n}",
+        "options": {}
+      },
+      "id": "respond-ip-placeholder",
+      "name": "Respond IP Placeholder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [-240, 360]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.confirmed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "confirm-start",
+      "name": "Confirmed Start?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-240, 540]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\":false,\"intent\":\"start_vm\",\"error\":\"confirmation_required\"}",
+        "options": {}
+      },
+      "id": "respond-start-confirm-needed",
+      "name": "Respond Start Confirmation Required",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [20, 460]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\":false,\"intent\":\"start_vm\",\"error\":\"not_implemented_yet\",\"message\":\"Start branch scaffold created\"}",
+        "options": {}
+      },
+      "id": "respond-start-placeholder",
+      "name": "Respond Start Placeholder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [20, 620]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.confirmed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "confirm-stop",
+      "name": "Confirmed Stop?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-240, 760]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\":false,\"intent\":\"stop_vm\",\"error\":\"confirmation_required\"}",
+        "options": {}
+      },
+      "id": "respond-stop-confirm-needed",
+      "name": "Respond Stop Confirmation Required",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [20, 680]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\":false,\"intent\":\"stop_vm\",\"error\":\"not_implemented_yet\",\"message\":\"Stop branch scaffold created\"}",
+        "options": {}
+      },
+      "id": "respond-stop-placeholder",
+      "name": "Respond Stop Placeholder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [20, 840]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.confirmed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "confirm-reboot",
+      "name": "Confirmed Reboot?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-240, 980]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\":false,\"intent\":\"reboot_vm\",\"error\":\"confirmation_required\"}",
+        "options": {}
+      },
+      "id": "respond-reboot-confirm-needed",
+      "name": "Respond Reboot Confirmation Required",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [20, 900]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\":false,\"intent\":\"reboot_vm\",\"error\":\"not_implemented_yet\",\"message\":\"Reboot branch scaffold created\"}",
+        "options": {}
+      },
+      "id": "respond-reboot-placeholder",
+      "name": "Respond Reboot Placeholder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [20, 1060]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Parse OpenClaw Request", "type": "main", "index": 0 }]] },
+    "Parse OpenClaw Request": { "main": [[{ "node": "Route Intent", "type": "main", "index": 0 }]] },
+    "Route Intent": {
+      "main": [
+        [{ "node": "List VMs", "type": "main", "index": 0 }],
+        [{ "node": "Fetch VMs For Single Status", "type": "main", "index": 0 }],
+        [{ "node": "Respond IP Placeholder", "type": "main", "index": 0 }],
+        [{ "node": "Confirmed Start?", "type": "main", "index": 0 }],
+        [{ "node": "Confirmed Stop?", "type": "main", "index": 0 }],
+        [{ "node": "Confirmed Reboot?", "type": "main", "index": 0 }]
+      ]
+    },
+    "List VMs": { "main": [[{ "node": "Format VM List", "type": "main", "index": 0 }]] },
+    "Format VM List": { "main": [[{ "node": "Respond List VMs", "type": "main", "index": 0 }]] },
+    "Fetch VMs For Single Status": { "main": [[{ "node": "Format Single VM Status", "type": "main", "index": 0 }]] },
+    "Format Single VM Status": { "main": [[{ "node": "Respond Single VM Status", "type": "main", "index": 0 }]] },
+    "Confirmed Start?": {
+      "main": [
+        [{ "node": "Respond Start Placeholder", "type": "main", "index": 0 }],
+        [{ "node": "Respond Start Confirmation Required", "type": "main", "index": 0 }]
+      ]
+    },
+    "Confirmed Stop?": {
+      "main": [
+        [{ "node": "Respond Stop Placeholder", "type": "main", "index": 0 }],
+        [{ "node": "Respond Stop Confirmation Required", "type": "main", "index": 0 }]
+      ]
+    },
+    "Confirmed Reboot?": {
+      "main": [
+        [{ "node": "Respond Reboot Placeholder", "type": "main", "index": 0 }],
+        [{ "node": "Respond Reboot Confirmation Required", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}
