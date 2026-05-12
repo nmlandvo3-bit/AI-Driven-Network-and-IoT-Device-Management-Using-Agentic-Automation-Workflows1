@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+USER_NAME="$(whoami)"
+COMMAND_TEXT="$*"
+CWD="$(pwd)"
+
+logger "COMPANY_POLICY_WARNING user=${USER_NAME} command='${COMMAND_TEXT}' cwd=${CWD}"
+
+cat <<'WARN'
+========================================
+⚠️ COMPANY SECURITY WARNING
+This action is restricted.
+Your activity is being logged.
+Repeated attempts will be reported.
+========================================
+WARN

@@ -1,0 +1,30 @@
+# Identity and privilege changes
+-w /etc/passwd -p wa -k identity_change
+-w /etc/shadow -p wa -k identity_change
+-w /etc/group -p wa -k identity_change
+-w /etc/sudoers -p wa -k sudoers_change
+-w /etc/sudoers.d/ -p wa -k sudoers_change
+
+# Software installation tools
+-w /usr/bin/apt -p x -k software_install
+-w /usr/bin/apt-get -p x -k software_install
+-w /usr/bin/dpkg -p x -k software_install
+-w /usr/bin/snap -p x -k software_install
+
+# Administrative tools
+-w /usr/sbin/useradd -p x -k admin_tool
+-w /usr/sbin/usermod -p x -k admin_tool
+-w /usr/bin/passwd -p x -k admin_tool
+-w /usr/bin/systemctl -p x -k admin_tool
+
+# Persistence attempts
+-w /usr/bin/crontab -p x -k persistence_attempt
+
+# Download tools
+-w /usr/bin/curl -p x -k download_tool
+-w /usr/bin/wget -p x -k download_tool
+
+# Temporary directory execution monitoring
+-a always,exit -F arch=b64 -S execve -F dir=/tmp -F auid>=1000 -F auid!=4294967295 -k tmp_script_exec
+-a always,exit -F arch=b64 -S execve -F dir=/var/tmp -F auid>=1000 -F auid!=4294967295 -k tmp_script_exec
+-a always,exit -F arch=b64 -S execve -F dir=/dev/shm -F auid>=1000 -F auid!=4294967295 -k tmp_script_exec
