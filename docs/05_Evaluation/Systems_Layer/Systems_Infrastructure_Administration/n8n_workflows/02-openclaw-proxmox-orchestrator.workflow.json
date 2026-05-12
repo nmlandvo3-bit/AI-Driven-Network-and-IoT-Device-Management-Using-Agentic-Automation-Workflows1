@@ -1,0 +1,1786 @@
+{
+  "updatedAt": "2026-05-05T18:29:28.878Z",
+  "createdAt": "2026-04-15T02:50:53.340Z",
+  "id": "LDOfaQU10lYbt2Yy",
+  "name": "OpenClaw Proxmox Orchestrator",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "openclaw-proxmox-orchestrator",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-openclaw-proxmox-orchestrator",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1160,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\n\nfunction firstText(...vals) {\n  for (const v of vals) {\n    if (v !== undefined && v !== null && String(v).trim()) return String(v).trim();\n  }\n  return '';\n}\n\nconst rawText = firstText(\n  body.raw_text,\n  body.chatInput,\n  body.input,\n  body.text,\n  typeof body.message === 'string' ? body.message : '',\n  body.prompt,\n  body.query,\n  body.command,\n  body.body?.raw_text,\n  body.body?.chatInput,\n  body.body?.input,\n  body.body?.text,\n  typeof body.body?.message === 'string' ? body.body.message : '',\n  body.message?.text,\n  body.event?.text,\n  body.update?.message?.text\n);\n\nlet intent = String(body.intent || '').trim();\nlet target = body.target ?? body.vmid ?? body.name ?? body.label ?? null;\nlet confirmed = !!body.confirmed;\nlet requiresConfirmation = !!body.requires_confirmation;\nlet intentSource = intent ? 'structured_intent' : 'natural_language';\n\nconst text = rawText.toLowerCase()\n  .replace(/[.,!?;:]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\n// Natural-language confirmation words for future approval flows.\nif (!confirmed && /^(yes|yeah|yebo|yep|ok|okay|approved|approve|confirm|confirmed|do it|proceed)$/i.test(rawText.trim())) {\n  confirmed = true;\n}\n\nfunction cleanTarget(s) {\n  if (!s) return null;\n  let t = String(s).trim();\n  t = t.replace(/^(vm|machine|server|host)\\s+/i, '');\n  t = t.replace(/\\s+(please|now)$/i, '');\n  t = t.replace(/[^A-Za-z0-9_. -]/g, '').trim();\n  return t || null;\n}\n\nfunction targetAfter(patterns) {\n  for (const p of patterns) {\n    const m = rawText.match(p);\n    if (m && m[1]) return cleanTarget(m[1]);\n  }\n  return null;\n}\n\nif (!intent) {\n  // Ghost VM/app unreachable and idle cleanup.\n  if (/(cannot access|can't access|cant access|unreachable|not responding|app down|server down|service down|people cannot access)/.test(text)) {\n    intent = 'recover_ghost_vm';\n  }\n  else if (/(idle|unused|cleanup|clean up|resource saving|save resources|old vms|waste)/.test(text) && /(vm|vms|machine|machines|lab|proxmox|server|servers)/.test(text)) {\n    intent = 'cleanup_idle_vms';\n  }\n  // Safe patching / snapshot / rollback intents.\n  if (/(safe|safely|patch|update|upgrade)/.test(text) && /(ubuntu|test|n8n|server|vm|machine|host)/.test(text)) {\n    intent = 'safe_patch_vm';\n  }\n  else if (/(create|take|make)/.test(text) && /(snapshot|backup|restore point|safety point)/.test(text)) {\n    intent = 'create_vm_snapshot';\n  }\n  else if (/(rollback|roll back|revert|restore)/.test(text) && /(snapshot|backup|vm|machine|server|ubuntu|test)/.test(text)) {\n    intent = 'rollback_vm_snapshot';\n  }\n  // Resource diagnostics for one VM, e.g. \"Ubuntu Test is slow\", \"check CPU/RAM of Ubuntu Test\".\n  else if (/(slow|lag|lagging|crash|crashing|freeze|freezing|resource|resources|ram|memory|cpu|disk|diagnose|diagnostic|why|performance|bottleneck)/.test(text) && /(ubuntu|test|n8n|server|vm|machine|host|gns|windows|desktop)/.test(text) && !/(all|every|summary of all)/.test(text)) {\n    intent = 'diagnose_vm_resources';\n  }\n  // Detailed inventory/health summary with RAM, CPU, uptime, disk/network counters.\n  else if (!intent && /(?:detail|details|detailed|full|complete|summary|information|info|resources|resource|ram|memory|cpu|usage|utilization)/.test(text) && !/\\b(start|stop|shutdown|reboot|restart|reset|power on|power off|safe|safely|patch|update|upgrade)\\b/.test(text)) {\n    intent = 'list_vm_status';\n    body.detail = true;\n  }\n  // IP discovery: tolerate typos like \"vs\" for \"vms\" and natural wording.\n  else if (!intent && /(?:ip|ips|address|addresses)/.test(text) && /(vm|vms|vs|machine|machines|server|servers|host|hosts|all)/.test(text)) {\n    intent = 'get_all_vm_ips';\n  }\n  // Explicit all-VM inventory/status.\n  else if (!intent && /(?:list|show|check|get|display)/.test(text) && /(vm|vms|machine|machines|server|servers)/.test(text) && /(status|statuses|state|states|running|stopped|inventory|list)/.test(text)) {\n    intent = 'list_vm_status';\n  }\n  // One VM status.\n  else if (!intent && /(?:status|state|running|\\bup\\b|\\bdown\\b|health)/.test(text) && /(vm|machine|server|host|ubuntu|gns|windows|n8n|proxmox|test|desktop)/.test(text)) {\n    intent = 'get_vm_status';\n  }\n  else if (!intent && /\\b(start|power on|turn on|boot)\\b/.test(text)) {\n    intent = 'start_vm';\n  }\n  else if (!intent && /\\b(stop|shutdown|shut down|power off|turn off)\\b/.test(text)) {\n    intent = 'stop_vm';\n  }\n  else if (!intent && /\\b(reboot|restart|reset)\\b/.test(text)) {\n    intent = 'reboot_vm';\n  }\n}\n\nif (!target) {\n  target = targetAfter([\n    /(?:status|state|health)\\s+(?:of|for)?\\s*(?:the)?\\s*(.+)$/i,\n    /(?:start|stop|shutdown|reboot|restart|reset|boot)\\s+(?:the)?\\s*(.+)$/i,\n    /(?:vm|machine|server|host)\\s+(?:called|named)?\\s*(.+)$/i,\n    /(?:ubuntu\\s*test|ubuntutest|mlab\\s*test|mlab-test|n8n\\s*server|gns3|gns3-vm|ubuntu\\s*desktop|windows|wineleven)/i\n  ]);\n  // If targetAfter matched the whole known-name regex, use the actual match.\n  if (!target) {\n    const known = rawText.match(/(ubuntu\\s*test|ubuntutest|mlab\\s*test|mlab-test|n8n\\s*server|mlabubuntuserv|gns3-vm107|gns3|ubuntu\\s*desktop|ubuntuDesk24\\.04|wineleven|windows)/i);\n    if (known) target = cleanTarget(known[1]);\n  }\n}\n\n// Canonicalize common spoken labels to Proxmox labels where useful.\nconst canonical = {\n  'ubuntu test': 'UbuntuTest',\n  'ubuntutest': 'UbuntuTest',\n  'mlab test': 'UbuntuTest',\n  'mlab-test': 'UbuntuTest',\n  'n8n server': 'MlabUbuntuServ',\n  'mlabubuntuserv': 'MlabUbuntuServ',\n  'gns3': 'GNS3-VM107',\n  'gns3-vm': 'GNS3-VM107',\n  'gns3-vm107': 'GNS3-VM107',\n  'ubuntu desktop': 'UbuntuDesk24.04',\n  'ubuntudesk24.04': 'UbuntuDesk24.04',\n  'windows': 'WinEleven',\n  'wineleven': 'WinEleven'\n};\nif (target) {\n  const key = String(target).toLowerCase().replace(/\\s+/g, ' ').trim();\n  target = canonical[key] || target;\n}\n\nreturn [{ json: {\n  source: body.source || 'openclaw',\n  channel: body.channel || 'telegram',\n  user_id: body.user_id || null,\n  user_name: body.user_name || null,\n  raw_text: rawText,\n  intent,\n  intent_source: intentSource,\n  target,\n  confirmed,\n  requires_confirmation: requiresConfirmation,\n  detail: !!(body.detail || body.detailed || /\\b(detail|details|detailed|full|complete|summary|information|info|resources|resource|ram|memory|cpu|usage|utilization)\\b/i.test(rawText)),\n  request_id: body.request_id || null\n}}];"
+      },
+      "id": "parse-openclaw-request",
+      "name": "Parse OpenClaw Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -920,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 12,
+        "output": "={{\n  $json.intent === 'list_vm_status' ? 0 :\n  $json.intent === 'get_vm_status' ? 1 :\n  $json.intent === 'get_all_vm_ips' ? 2 :\n  $json.intent === 'start_vm' ? 3 :\n  $json.intent === 'stop_vm' ? 4 :\n  $json.intent === 'reboot_vm' ? 5 :\n  $json.intent === 'diagnose_vm_resources' ? 6 :\n  $json.intent === 'create_vm_snapshot' ? 7 :\n  $json.intent === 'rollback_vm_snapshot' ? 8 :\n  $json.intent === 'safe_patch_vm' ? 9 :\n  $json.intent === 'recover_ghost_vm' ? 10 :\n  $json.intent === 'cleanup_idle_vms' ? 11 :\n  -1\n}}"
+      },
+      "id": "route-intent",
+      "name": "Route Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -680,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources?type=vm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "http-list-vms",
+      "name": "List VMs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -380,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $('Parse OpenClaw Request').first().json;\nconst vms = Array.isArray($json.data) ? $json.data : [];\nfunction gb(bytes) {\n  const n = Number(bytes || 0);\n  if (!n) return '0 GB';\n  return (n / 1024 / 1024 / 1024).toFixed(1) + ' GB';\n}\nfunction pct(frac) {\n  const n = Number(frac || 0) * 100;\n  return n.toFixed(n >= 10 ? 1 : 2) + '%';\n}\nfunction uptime(sec) {\n  sec = Number(sec || 0);\n  if (!sec) return '-';\n  const d = Math.floor(sec / 86400);\n  const h = Math.floor((sec % 86400) / 3600);\n  const m = Math.floor((sec % 3600) / 60);\n  return `${d}d ${h}h ${m}m`;\n}\nfunction statusIcon(s) {\n  return s === 'running' ? '\ud83d\udfe2' : s === 'stopped' ? '\ud83d\udd34' : '\ud83d\udfe1';\n}\nfunction bytesHuman(bytes) {\n  let n = Number(bytes || 0);\n  const units = ['B','KB','MB','GB','TB'];\n  let i = 0;\n  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }\n  return `${n.toFixed(i ? 1 : 0)} ${units[i]}`;\n}\nconst data = vms.map(vm => {\n  const mem = Number(vm.mem || 0);\n  const maxmem = Number(vm.maxmem || 0);\n  const memPct = maxmem ? (mem / maxmem * 100) : 0;\n  return {\n    vmid: String(vm.vmid),\n    name: vm.name,\n    node: vm.node,\n    status: vm.status,\n    type: vm.type,\n    cpu_usage: pct(vm.cpu),\n    cpu_cores: vm.maxcpu || null,\n    ram_used: gb(vm.mem),\n    ram_total: gb(vm.maxmem),\n    ram_usage: memPct.toFixed(1) + '%',\n    disk_size: gb(vm.maxdisk),\n    disk_read: bytesHuman(vm.diskread),\n    disk_write: bytesHuman(vm.diskwrite),\n    net_in: bytesHuman(vm.netin),\n    net_out: bytesHuman(vm.netout),\n    uptime: uptime(vm.uptime)\n  };\n});\nconst running = data.filter(v => v.status === 'running').length;\nconst stopped = data.filter(v => v.status === 'stopped').length;\nconst lines = [];\nlines.push('\ud83d\udda5\ufe0f *Proxmox VM Detailed Summary*');\nlines.push(`\ud83d\udcca Total: ${data.length} | \ud83d\udfe2 Running: ${running} | \ud83d\udd34 Stopped: ${stopped}`);\nlines.push('');\nfor (const vm of data) {\n  lines.push(`${statusIcon(vm.status)} *${vm.vmid} \u2014 ${vm.name}*`);\n  lines.push(`   \ud83d\udccd Node: ${vm.node} | State: ${vm.status}`);\n  lines.push(`   \ud83e\udde0 RAM: ${vm.ram_used} / ${vm.ram_total} (${vm.ram_usage})`);\n  lines.push(`   \u2699\ufe0f CPU: ${vm.cpu_usage} of ${vm.cpu_cores ?? '-'} cores`);\n  lines.push(`   \ud83d\udcbe Disk: ${vm.disk_size} | Read ${vm.disk_read} / Write ${vm.disk_write}`);\n  lines.push(`   \ud83c\udf10 Net: In ${vm.net_in} / Out ${vm.net_out}`);\n  lines.push(`   \u23f1\ufe0f Uptime: ${vm.uptime}`);\n  lines.push('');\n}\nreturn [{ json: { success: true, intent: 'list_vm_status', detail: !!req.detail, count: data.length, summary: { total: data.length, running, stopped }, message: lines.join('\\n'), data } }];"
+      },
+      "id": "format-list-vms",
+      "name": "Format VM List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -120,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-list-vms",
+      "name": "Respond List VMs",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        140,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources?type=vm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "http-get-vm-status",
+      "name": "Fetch VMs For Single Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -380,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $('Parse OpenClaw Request').first().json;\nconst target = req.target || {};\nconst vmid = String(target.vmid || '');\nconst vms = Array.isArray($json.data) ? $json.data : [];\nconst match = vms.find(vm => String(vm.vmid) === vmid);\nif (!match) { return [{ json: { success: false, intent: 'get_vm_status', error: 'vm_not_found', target } }]; }\nreturn [{ json: { success: true, intent: 'get_vm_status', target, data: { vmid: String(match.vmid), name: match.name, node: match.node, status: match.status, type: match.type } } }];"
+      },
+      "id": "format-single-vm-status",
+      "name": "Format Single VM Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-single-vm-status",
+      "name": "Respond Single VM Status",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        140,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources?type=vm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "http-get-all-vms-for-ips",
+      "name": "Fetch VMs For IPs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -380,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const vms = Array.isArray($json.data) ? $json.data : [];\nreturn vms.map(vm => ({ json: { vmid: String(vm.vmid), name: vm.name, node: vm.node, status: vm.status, type: vm.type } }));"
+      },
+      "id": "split-vms-for-ips",
+      "name": "Split VMs For IP Lookup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -120,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "running",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-vm-running-for-ip",
+      "name": "VM Running For IP?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        140,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "6H9qIGjGiO4vME8i",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/6H9qIGjGiO4vME8i",
+          "cachedResultName": "Sub-Proxmox-IP-Resolver"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "target": "={{ $json.vmid }}",
+            "vmid": "={{ $json.vmid }}",
+            "name": "={{ $json.name }}",
+            "label": "={{ $json.name }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "target",
+              "displayName": "target",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "vmid",
+              "displayName": "vmid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "label",
+              "displayName": "label",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "http-fetch-vm-ip",
+      "name": "Resolve VM IP via Sub-workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        420,
+        280
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('VM Running For IP?').item.json;\nconst resolver = $json;\nconst data = resolver.data && !Array.isArray(resolver.data) ? resolver.data : resolver;\nconst ipv4 = data.ipv4 || (Array.isArray(data.ips) ? (data.ips.find(i => i.version === 4)?.ip) : null);\nconst ip = ipv4 || data.ip || null;\nreturn [{ json: {\n  vmid: base.vmid,\n  name: base.name,\n  node: base.node,\n  status: base.status,\n  type: base.type,\n  mac: data.mac || null,\n  ip,\n  ipv4: ipv4 || null,\n  ips: data.ips || [],\n  ip_source: ip ? (ipv4 ? 'proxmox-arp-ipv4' : 'proxmox-arp') : null,\n  resolver_success: resolver.success ?? !!ip,\n  note: ip ? null : 'no_ip_found_by_proxmox_ip_resolver'\n} }];"
+      },
+      "id": "parse-vm-ip",
+      "name": "Parse VM IP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { vmid: $json.vmid, name: $json.name, node: $json.node, status: $json.status, type: $json.type, ip: null, ip_source: null, note: 'vm_not_running' } }];"
+      },
+      "id": "mark-vm-not-running",
+      "name": "Mark VM Not Running",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        440
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "merge-ip-results",
+      "name": "Merge IP Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        960,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json;\nlet data = [];\nif (Array.isArray(input.data)) data = input.data;\nelse if (Array.isArray(input.results)) data = input.results;\nelse data = $input.all().map(i => i.json);\n\nfunction normalizeIps(v) {\n  if (!v) return [];\n  if (Array.isArray(v)) return v;\n  if (typeof v === 'object') return [v];\n  return [];\n}\nfunction statusIcon(status) {\n  if (status === 'running') return '\ud83d\udfe2';\n  if (status === 'stopped') return '\ud83d\udd34';\n  return '\ud83d\udfe1';\n}\nfunction ipText(vm) {\n  const ip = vm.ipv4 || vm.ip || null;\n  if (ip) return ip;\n  if (vm.status === 'running') return 'No IP found yet';\n  return 'VM stopped';\n}\n\ndata = data.map(vm => ({\n  vmid: String(vm.vmid ?? ''),\n  name: vm.name ?? vm.label ?? '',\n  node: vm.node ?? '',\n  status: vm.status ?? '',\n  type: vm.type ?? 'qemu',\n  mac: vm.mac ?? null,\n  ip: vm.ipv4 || vm.ip || null,\n  ipv4: vm.ipv4 || (vm.ip && /^\\d+\\./.test(vm.ip) ? vm.ip : null),\n  ips: normalizeIps(vm.ips),\n  ip_source: (vm.ipv4 || vm.ip) ? (vm.ip_source || vm.ipsource || 'proxmox-mac-arp-resolver') : null,\n  note: (vm.ipv4 || vm.ip) ? null : (vm.status === 'running' ? 'no_ip_found_in_arp_or_arp_scan' : 'vm_not_running')\n}));\n\nconst running = data.filter(v => v.status === 'running').length;\nconst withIp = data.filter(v => v.ipv4 || v.ip).length;\nconst lines = [];\nlines.push('\ud83c\udf10 *Proxmox VM IP Address Summary*');\nlines.push(`\ud83d\udce6 Total VMs: ${data.length} | \ud83d\udfe2 Running: ${running} | \u2705 With IPv4: ${withIp}`);\nlines.push('');\nfor (const vm of data) {\n  lines.push(`${statusIcon(vm.status)} *${vm.vmid} \u2014 ${vm.name || 'Unnamed VM'}*`);\n  lines.push(`   \ud83d\udce1 Status: ${vm.status || 'unknown'} | \ud83d\udccd Node: ${vm.node || '-'}`);\n  lines.push(`   \ud83c\udf0d IPv4: ${ipText(vm)}`);\n  if (vm.mac) lines.push(`   \ud83d\udd17 MAC: ${vm.mac}`);\n  if (vm.ip_source) lines.push(`   \ud83e\udded Source: ${vm.ip_source}`);\n  if (vm.note === 'vm_not_running') lines.push('   \u2139\ufe0f Note: VM is stopped, so no live IP is expected.');\n  else if (vm.note) lines.push(`   \u26a0\ufe0f Note: ${vm.note}`);\n  lines.push('');\n}\nlines.push('\ud83d\udca1 IPs are resolved agentlessly from Proxmox VM metadata, bridge neighbor table, and arp-scan.');\n\nreturn [{ json: { success: true, intent: 'get_all_vm_ips', count: data.length, data, message: lines.join('\\n') } }];"
+      },
+      "id": "format-all-vm-ips",
+      "name": "Format All VM IPs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-all-vm-ips",
+      "name": "Respond All VM IPs",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1480,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.confirmed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "confirm-start",
+      "name": "Confirmed Start?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -380,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\":false,\"intent\":\"start_vm\",\"error\":\"confirmation_required\"}",
+        "options": {}
+      },
+      "id": "respond-start-confirm-needed",
+      "name": "Respond Start Confirmation Required",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -120,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources?type=vm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "http-start-fetch-vms",
+      "name": "Fetch VMs For Start",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -120,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $('Parse OpenClaw Request').first().json;\nconst target = req.target || {};\nconst vmid = String(target.vmid || '');\nconst vms = Array.isArray($json.data) ? $json.data : [];\nconst match = vms.find(vm => String(vm.vmid) === vmid);\nif (!match) return [{ json: { success: false, intent: 'start_vm', error: 'vm_not_found', target } }];\nreturn [{ json: { success: true, intent: 'start_vm', target, vmid: String(match.vmid), vmName: match.name, vmNode: match.node, vmType: match.type, status_before: match.status } }];"
+      },
+      "id": "prepare-start",
+      "name": "Prepare Start",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.status_before }}",
+              "rightValue": "running",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "state-guard-start",
+      "name": "Already Running?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, intent: 'start_vm', error: 'already_running', target: $json.target, data: { vmid: $json.vmid, name: $json.vmName, node: $json.vmNode, status_before: $json.status_before } } }}",
+        "options": {}
+      },
+      "id": "respond-start-already-running",
+      "name": "Respond Start Already Running",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        660,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://192.168.0.100:8006/api2/json/nodes/{{$json.vmNode}}/{{$json.vmType}}/{{$json.vmid}}/status/start",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "http-start-vm",
+      "name": "Start VM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, intent: 'start_vm', target: $('Prepare Start').first().json.target, data: { vmid: $('Prepare Start').first().json.vmid, name: $('Prepare Start').first().json.vmName, node: $('Prepare Start').first().json.vmNode, status_before: $('Prepare Start').first().json.status_before, action: 'start_requested' } } }}",
+        "options": {}
+      },
+      "id": "respond-start-success",
+      "name": "Respond Start Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        920,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.confirmed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "confirm-stop",
+      "name": "Confirmed Stop?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -380,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\":false,\"intent\":\"stop_vm\",\"error\":\"confirmation_required\"}",
+        "options": {}
+      },
+      "id": "respond-stop-confirm-needed",
+      "name": "Respond Stop Confirmation Required",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -120,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources?type=vm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "http-stop-fetch-vms",
+      "name": "Fetch VMs For Stop",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -120,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $('Parse OpenClaw Request').first().json;\nconst target = req.target || {};\nconst vmid = String(target.vmid || '');\nconst vms = Array.isArray($json.data) ? $json.data : [];\nconst match = vms.find(vm => String(vm.vmid) === vmid);\nif (!match) return [{ json: { success: false, intent: 'stop_vm', error: 'vm_not_found', target } }];\nreturn [{ json: { success: true, intent: 'stop_vm', target, vmid: String(match.vmid), vmName: match.name, vmNode: match.node, vmType: match.type, status_before: match.status } }];"
+      },
+      "id": "prepare-stop",
+      "name": "Prepare Stop",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.status_before }}",
+              "rightValue": "stopped",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "state-guard-stop",
+      "name": "Already Stopped?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, intent: 'stop_vm', error: 'already_stopped', target: $json.target, data: { vmid: $json.vmid, name: $json.vmName, node: $json.vmNode, status_before: $json.status_before } } }}",
+        "options": {}
+      },
+      "id": "respond-stop-already-stopped",
+      "name": "Respond Stop Already Stopped",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        660,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://192.168.0.100:8006/api2/json/nodes/{{$json.vmNode}}/{{$json.vmType}}/{{$json.vmid}}/status/stop",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "http-stop-vm",
+      "name": "Stop VM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, intent: 'stop_vm', target: $('Prepare Stop').first().json.target, data: { vmid: $('Prepare Stop').first().json.vmid, name: $('Prepare Stop').first().json.vmName, node: $('Prepare Stop').first().json.vmNode, status_before: $('Prepare Stop').first().json.status_before, action: 'stop_requested' } } }}",
+        "options": {}
+      },
+      "id": "respond-stop-success",
+      "name": "Respond Stop Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        920,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.confirmed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "confirm-reboot",
+      "name": "Confirmed Reboot?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -380,
+        1320
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\":false,\"intent\":\"reboot_vm\",\"error\":\"confirmation_required\"}",
+        "options": {}
+      },
+      "id": "respond-reboot-confirm-needed",
+      "name": "Respond Reboot Confirmation Required",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -120,
+        1240
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources?type=vm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "http-reboot-fetch-vms",
+      "name": "Fetch VMs For Reboot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -120,
+        1400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $('Parse OpenClaw Request').first().json;\nconst target = req.target || {};\nconst vmid = String(target.vmid || '');\nconst vms = Array.isArray($json.data) ? $json.data : [];\nconst match = vms.find(vm => String(vm.vmid) === vmid);\nif (!match) return [{ json: { success: false, intent: 'reboot_vm', error: 'vm_not_found', target } }];\nreturn [{ json: { success: true, intent: 'reboot_vm', target, vmid: String(match.vmid), vmName: match.name, vmNode: match.node, vmType: match.type, status_before: match.status } }];"
+      },
+      "id": "prepare-reboot",
+      "name": "Prepare Reboot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        1400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.status_before }}",
+              "rightValue": "running",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "state-guard-reboot",
+      "name": "Running For Reboot?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        1400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, intent: 'reboot_vm', error: 'vm_not_running', target: $json.target, data: { vmid: $json.vmid, name: $json.vmName, node: $json.vmNode, status_before: $json.status_before } } }}",
+        "options": {}
+      },
+      "id": "respond-reboot-not-running",
+      "name": "Respond Reboot Not Running",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        660,
+        1320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://192.168.0.100:8006/api2/json/nodes/{{$json.vmNode}}/{{$json.vmType}}/{{$json.vmid}}/status/reboot",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "http-reboot-vm",
+      "name": "Reboot VM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        1480
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, intent: 'reboot_vm', target: $('Prepare Reboot').first().json.target, data: { vmid: $('Prepare Reboot').first().json.vmid, name: $('Prepare Reboot').first().json.vmName, node: $('Prepare Reboot').first().json.vmNode, status_before: $('Prepare Reboot').first().json.status_before, action: 'reboot_requested' } } }}",
+        "options": {}
+      },
+      "id": "respond-reboot-success",
+      "name": "Respond Reboot Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        920,
+        1480
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "6H9qIGjGiO4vME8i",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/6H9qIGjGiO4vME8i",
+          "cachedResultName": "Sub-Proxmox-IP-Resolver"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "target": ""
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "target",
+              "displayName": "target",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "resolve-all-vm-ips-subworkflow",
+      "name": "Resolve All VM IPs via Sub-workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -380,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "uXZIZQhGiNHp2SkW",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/uXZIZQhGiNHp2SkW",
+          "cachedResultName": "Sub-Proxmox-Resource-Diagnostics"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "target": "={{ $json.target?.vmid || $json.target?.proxmox_name || $json.target?.canonical_name || $json.target || $json.raw_text || 'UbuntuTest' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "target",
+              "displayName": "target",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "run-resource-diagnostics",
+      "name": "Run Resource Diagnostics",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -380,
+        1660
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-resource-diagnostics",
+      "name": "Respond Resource Diagnostics",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -120,
+        1660
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "O9qEG8xaIpdMVIaI",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/O9qEG8xaIpdMVIaI",
+          "cachedResultName": "Sub-Proxmox-Snapshot-Manager"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "action": "={{ $json.intent === \"rollback_vm_snapshot\" ? \"rollback\" : \"create\" }}",
+            "target": "={{ $json.target?.vmid || $json.target?.proxmox_name || $json.target?.canonical_name || $json.target || $json.raw_text || \"UbuntuTest\" }}",
+            "confirmed": "={{ $json.confirmed }}",
+            "snapshot": "={{ $json.snapshot || \"\" }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "action",
+              "displayName": "action",
+              "type": "string"
+            },
+            {
+              "id": "target",
+              "displayName": "target",
+              "type": "string"
+            },
+            {
+              "id": "confirmed",
+              "displayName": "confirmed",
+              "type": "boolean"
+            },
+            {
+              "id": "snapshot",
+              "displayName": "snapshot",
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "run-snapshot-manager",
+      "name": "Run Snapshot Manager",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -380,
+        1860
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-snapshot-manager",
+      "name": "Respond Snapshot Manager",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -120,
+        1860
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "thsz2pCu12NxVYfB",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/thsz2pCu12NxVYfB",
+          "cachedResultName": "Sub-Proxmox-Safe-Patching"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "target": "={{ $json.target?.vmid || $json.target?.proxmox_name || $json.target?.canonical_name || $json.target || $json.raw_text || \"UbuntuTest\" }}",
+            "confirmed": "={{ $json.confirmed }}",
+            "apply_upgrade": "={{ $json.apply_upgrade !== false }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "target",
+              "displayName": "target",
+              "type": "string"
+            },
+            {
+              "id": "confirmed",
+              "displayName": "confirmed",
+              "type": "boolean"
+            },
+            {
+              "id": "apply_upgrade",
+              "displayName": "apply_upgrade",
+              "type": "boolean"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "run-safe-patching",
+      "name": "Run Safe Patching",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -380,
+        2060
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-safe-patching",
+      "name": "Respond Safe Patching",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -120,
+        2060
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "XxvFYnpqb1e1zfjI",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/XxvFYnpqb1e1zfjI",
+          "cachedResultName": "Sub-Proxmox-Ghost-VM-Recovery"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "target": "={{ $json.target?.vmid || $json.target?.proxmox_name || $json.target?.canonical_name || $json.target || $json.raw_text || \"UbuntuTest\" }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "target",
+              "displayName": "target",
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "run-ghost",
+      "name": "Run Ghost VM Recovery",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -380,
+        2260
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-ghost",
+      "name": "Respond Ghost VM Recovery",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -120,
+        2260
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "5HVdDUq7yIROyOFf",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/5HVdDUq7yIROyOFf",
+          "cachedResultName": "Sub-Proxmox-Idle-Lab-Cleanup"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "run-idle",
+      "name": "Run Idle Cleanup",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -380,
+        2460
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-idle",
+      "name": "Respond Idle Cleanup",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -120,
+        2460
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "execute-workflow-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1160,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse OpenClaw Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse OpenClaw Request": {
+      "main": [
+        [
+          {
+            "node": "Route Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Intent": {
+      "main": [
+        [
+          {
+            "node": "List VMs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch VMs For Single Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resolve All VM IPs via Sub-workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Confirmed Start?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Confirmed Stop?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Confirmed Reboot?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run Resource Diagnostics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run Snapshot Manager",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run Snapshot Manager",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run Safe Patching",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run Ghost VM Recovery",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run Idle Cleanup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List VMs": {
+      "main": [
+        [
+          {
+            "node": "Format VM List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format VM List": {
+      "main": [
+        [
+          {
+            "node": "Respond List VMs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch VMs For Single Status": {
+      "main": [
+        [
+          {
+            "node": "Format Single VM Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Single VM Status": {
+      "main": [
+        [
+          {
+            "node": "Respond Single VM Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch VMs For IPs": {
+      "main": [
+        [
+          {
+            "node": "Split VMs For IP Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split VMs For IP Lookup": {
+      "main": [
+        [
+          {
+            "node": "VM Running For IP?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VM Running For IP?": {
+      "main": [
+        [
+          {
+            "node": "Resolve VM IP via Sub-workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark VM Not Running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse VM IP": {
+      "main": [
+        [
+          {
+            "node": "Merge IP Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark VM Not Running": {
+      "main": [
+        [
+          {
+            "node": "Merge IP Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge IP Results": {
+      "main": [
+        [
+          {
+            "node": "Format All VM IPs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format All VM IPs": {
+      "main": [
+        [
+          {
+            "node": "Respond All VM IPs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmed Start?": {
+      "main": [
+        [
+          {
+            "node": "Fetch VMs For Start",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Start Confirmation Required",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch VMs For Start": {
+      "main": [
+        [
+          {
+            "node": "Prepare Start",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Start": {
+      "main": [
+        [
+          {
+            "node": "Already Running?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Running?": {
+      "main": [
+        [
+          {
+            "node": "Respond Start Already Running",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Start VM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start VM": {
+      "main": [
+        [
+          {
+            "node": "Respond Start Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmed Stop?": {
+      "main": [
+        [
+          {
+            "node": "Fetch VMs For Stop",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Stop Confirmation Required",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch VMs For Stop": {
+      "main": [
+        [
+          {
+            "node": "Prepare Stop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Stop": {
+      "main": [
+        [
+          {
+            "node": "Already Stopped?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Stopped?": {
+      "main": [
+        [
+          {
+            "node": "Respond Stop Already Stopped",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop VM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stop VM": {
+      "main": [
+        [
+          {
+            "node": "Respond Stop Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmed Reboot?": {
+      "main": [
+        [
+          {
+            "node": "Fetch VMs For Reboot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Reboot Confirmation Required",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch VMs For Reboot": {
+      "main": [
+        [
+          {
+            "node": "Prepare Reboot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reboot": {
+      "main": [
+        [
+          {
+            "node": "Running For Reboot?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Running For Reboot?": {
+      "main": [
+        [
+          {
+            "node": "Reboot VM",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Reboot Not Running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reboot VM": {
+      "main": [
+        [
+          {
+            "node": "Respond Reboot Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve VM IP via Sub-workflow": {
+      "main": [
+        [
+          {
+            "node": "Parse VM IP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve All VM IPs via Sub-workflow": {
+      "main": [
+        [
+          {
+            "node": "Format All VM IPs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Resource Diagnostics": {
+      "main": [
+        [
+          {
+            "node": "Respond Resource Diagnostics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Snapshot Manager": {
+      "main": [
+        [
+          {
+            "node": "Respond Snapshot Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Safe Patching": {
+      "main": [
+        [
+          {
+            "node": "Respond Safe Patching",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Ghost VM Recovery": {
+      "main": [
+        [
+          {
+            "node": "Respond Ghost VM Recovery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Idle Cleanup": {
+      "main": [
+        [
+          {
+            "node": "Respond Idle Cleanup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse OpenClaw Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "772ad9cb-d23c-480f-9bf3-e1a5aa5f6f53",
+  "versionCounter": 62,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-04-15T02:50:53.343Z",
+      "createdAt": "2026-04-15T02:50:53.343Z",
+      "role": "workflow:owner",
+      "workflowId": "LDOfaQU10lYbt2Yy",
+      "projectId": "9roC5DswFI9iUVME",
+      "project": {
+        "updatedAt": "2025-11-29T12:18:45.236Z",
+        "createdAt": "2025-11-29T10:46:36.921Z",
+        "id": "9roC5DswFI9iUVME",
+        "name": "MLAB Networking <hualiguideaiproject@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null
+      }
+    }
+  ]
+}

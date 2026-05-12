@@ -1,0 +1,157 @@
+{
+  "updatedAt": "2026-05-05T12:33:17.501Z",
+  "createdAt": "2026-05-05T12:28:48.681Z",
+  "id": "6H9qIGjGiO4vME8i",
+  "name": "Sub-Proxmox-IP-Resolver",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sub-proxmox-ip-resolver",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-sub-proxmox-ip-resolver",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -640,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "execute-workflow-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const input = $json.body || $json.query || $json;\nconst rawTarget = input.target ?? input.vmid ?? input.name ?? input.label ?? '';\nconst target = String(rawTarget).replace(/[^A-Za-z0-9_. -]/g, '').trim();\nreturn { json: { target, requested_at: new Date().toISOString(), source: $json.body ? 'webhook' : 'execute_workflow' } };"
+      },
+      "id": "normalize-input",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "={{ `TARGET=${JSON.stringify($json.target || '')} bash -s <<'BASH'\nset -e\nTARGET=\"\\${TARGET:-}\"\ntmp=$(mktemp)\npvesh get /cluster/resources --type vm --output-format json > \"$tmp\"\npython3 - \"$TARGET\" \"$tmp\" <<'PYRESOLVE'\nimport json, sys, subprocess, re, ipaddress\n\ntarget = (sys.argv[1] or '').strip().lower()\npath = sys.argv[2]\nvms = [v for v in json.load(open(path)) if v.get('type') == 'qemu']\n\ndef mac_for(vmid):\n    try:\n        cfg = subprocess.check_output(['qm','config',str(vmid)], text=True, stderr=subprocess.DEVNULL)\n    except Exception:\n        return None\n    for line in cfg.splitlines():\n        if line.startswith('net'):\n            m = re.search(r'(?:virtio|e1000|rtl8139|vmxnet3|ne2k_pci|pcnet)=([0-9A-Fa-f:]{17})', line)\n            if m: return m.group(1).lower()\n            m = re.search(r'MACAddress[:=]([0-9A-Fa-f:]{17})', line)\n            if m: return m.group(1).lower()\n    return None\n\ndef read_neighbors():\n    try:\n        return subprocess.check_output(['ip','neighbor','show'], text=True, stderr=subprocess.DEVNULL)\n    except Exception:\n        return ''\n\ndef parse_ips_for_mac(mac, text):\n    if not mac: return []\n    out=[]\n    seen=set()\n    for line in text.splitlines():\n        if mac.lower() not in line.lower():\n            continue\n        parts=line.split()\n        if not parts:\n            continue\n        ip=parts[0]\n        try:\n            obj=ipaddress.ip_address(ip.split('%')[0])\n        except Exception:\n            continue\n        rec={'ip': ip, 'version': obj.version, 'is_link_local': obj.is_link_local, 'neighbor_line': line}\n        if ip not in seen:\n            seen.add(ip); out.append(rec)\n    # Prefer IPv4, then non-link-local IPv6, then link-local\n    out.sort(key=lambda r: (0 if r['version']==4 else 1, 1 if r['is_link_local'] else 0, r['ip']))\n    return out\n\ndef arp_scan_text():\n    for cmd in (['arp-scan','--interface=vmbr0','--localnet'], ['arp-scan','-l']):\n        try:\n            return subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL, timeout=12)\n        except Exception:\n            pass\n    return ''\n\ndef parse_arp_scan_for_mac(mac, text):\n    if not mac: return []\n    out=[]\n    seen=set()\n    for line in text.splitlines():\n        if mac.lower() in line.lower():\n            parts=line.split()\n            if parts:\n                ip=parts[0]\n                try:\n                    obj=ipaddress.ip_address(ip)\n                except Exception:\n                    continue\n                if ip not in seen:\n                    seen.add(ip)\n                    out.append({'ip': ip, 'version': obj.version, 'is_link_local': obj.is_link_local, 'neighbor_line': line, 'source': 'arp-scan'})\n    return out\n\n# Preload neighbor cache; if IPv4 is missing later, arp-scan fallback will refresh it.\nneigh = read_neighbors()\nscan_cache = None\n\nmatches=[]\nfor vm in vms:\n    vmid=str(vm.get('vmid',''))\n    name=str(vm.get('name',''))\n    if target and not (vmid == target or target in name.lower()):\n        continue\n    mac=mac_for(vmid)\n    ips=parse_ips_for_mac(mac, neigh)\n    if mac and not any(i['version']==4 for i in ips):\n        if scan_cache is None:\n            scan_cache = arp_scan_text()\n        scan_ips = parse_arp_scan_for_mac(mac, scan_cache)\n        # Merge scan result first if IPv4\n        by_ip={i['ip']: i for i in ips}\n        for i in scan_ips:\n            by_ip.setdefault(i['ip'], i)\n        ips=list(by_ip.values())\n        ips.sort(key=lambda r: (0 if r['version']==4 else 1, 1 if r['is_link_local'] else 0, r['ip']))\n    matches.append({\n        'vmid': int(vmid) if vmid.isdigit() else vmid,\n        'name': name,\n        'node': vm.get('node'),\n        'status': vm.get('status'),\n        'mac': mac,\n        'ip': ips[0]['ip'] if ips else None,\n        'ipv4': next((i['ip'] for i in ips if i['version']==4), None),\n        'ips': ips,\n        'maxmem': vm.get('maxmem'),\n        'maxcpu': vm.get('maxcpu'),\n        'uptime': vm.get('uptime')\n    })\n\nprint(json.dumps({'success': bool(matches), 'target': target, 'count': len(matches), 'data': matches[0] if target and len(matches)==1 else matches, 'results': matches}, separators=(',', ':')))\nPYRESOLVE\nrm -f \"$tmp\"\nBASH` }}"
+      },
+      "id": "ssh-resolve-vm-ip",
+      "name": "SSH: Resolve VM IP From Proxmox",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        -100,
+        80
+      ],
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const stdout = String($json.stdout || '').trim();\nconst start = stdout.indexOf('{');\nconst end = stdout.lastIndexOf('}');\nif (start === -1 || end === -1 || end < start) {\n  return { json: { success: false, error: 'no_json_from_ssh', stdout } };\n}\ntry {\n  const parsed = JSON.parse(stdout.slice(start, end + 1));\n  return { json: parsed };\n} catch (e) {\n  return { json: { success: false, error: 'json_parse_failed', message: e.message, stdout } };\n}"
+      },
+      "id": "parse-resolver-output",
+      "name": "Parse Resolver Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        180,
+        80
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "SSH: Resolve VM IP From Proxmox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SSH: Resolve VM IP From Proxmox": {
+      "main": [
+        [
+          {
+            "node": "Parse Resolver Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "85fd6f21-1434-4fdd-8d3a-60f25727122a",
+  "versionCounter": 4,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-05-05T12:28:48.683Z",
+      "createdAt": "2026-05-05T12:28:48.683Z",
+      "role": "workflow:owner",
+      "workflowId": "6H9qIGjGiO4vME8i",
+      "projectId": "9roC5DswFI9iUVME",
+      "project": {
+        "updatedAt": "2025-11-29T12:18:45.236Z",
+        "createdAt": "2025-11-29T10:46:36.921Z",
+        "id": "9roC5DswFI9iUVME",
+        "name": "MLAB Networking <hualiguideaiproject@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null
+      }
+    }
+  ]
+}

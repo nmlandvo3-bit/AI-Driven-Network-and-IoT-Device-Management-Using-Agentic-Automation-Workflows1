@@ -1,0 +1,156 @@
+{
+  "updatedAt": "2026-05-05T16:05:13.487Z",
+  "createdAt": "2026-05-05T16:05:12.778Z",
+  "id": "O9qEG8xaIpdMVIaI",
+  "name": "Sub-Proxmox-Snapshot-Manager",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "execute-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -700,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sub-proxmox-snapshot-manager",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -700,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const input = $json.body || $json.query || $json;\nconst action = String(input.action || 'create').toLowerCase().trim();\nconst rawTarget = input.target ?? input.vmid ?? input.name ?? input.label ?? 'UbuntuTest';\nconst target = String(rawTarget).replace(/[^A-Za-z0-9_. -]/g, '').trim() || 'UbuntuTest';\nconst confirmed = !!input.confirmed;\nconst snapshot = String(input.snapshot || input.snapshot_name || '').replace(/[^A-Za-z0-9_.-]/g, '').trim();\nreturn { json: { action, target, confirmed, snapshot, requested_at: new Date().toISOString() } };"
+      },
+      "id": "normalize",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "={{ `ACTION=${JSON.stringify($json.action || 'create')} TARGET=${JSON.stringify($json.target || 'UbuntuTest')} CONFIRMED=${JSON.stringify(String($json.confirmed || false))} SNAPSHOT=${JSON.stringify($json.snapshot || '')} bash -s <<'BASH'\nset -e\nACTION=\"\\${ACTION:-create}\"\nTARGET=\"\\${TARGET:-UbuntuTest}\"\nCONFIRMED=\"\\${CONFIRMED:-false}\"\nSNAPSHOT=\"\\${SNAPSHOT:-}\"\ntmp=$(mktemp)\npvesh get /cluster/resources --type vm --output-format json > \"$tmp\"\npython3 - \"$ACTION\" \"$TARGET\" \"$CONFIRMED\" \"$SNAPSHOT\" \"$tmp\" <<'PYSS'\nimport json, sys, subprocess, re, datetime\n\naction=sys.argv[1].strip().lower(); target=sys.argv[2].strip().lower(); confirmed=sys.argv[3].strip().lower()=='true'; snapshot=sys.argv[4].strip(); path=sys.argv[5]\nvms=[v for v in json.load(open(path)) if v.get('type')=='qemu']\nmatch=None\nfor vm in vms:\n    vmid=str(vm.get('vmid','')); name=str(vm.get('name','')).lower()\n    if target==vmid or target in name:\n        match=vm; break\nif not match:\n    print(json.dumps({'success':False,'error':'vm_not_found','target':target})); sys.exit(0)\nvmid=str(match['vmid']); name=match.get('name'); node=match.get('node'); status=match.get('status')\n\ndef run(cmd):\n    p=subprocess.run(cmd, text=True, capture_output=True)\n    return {'code':p.returncode,'stdout':p.stdout.strip(),'stderr':p.stderr.strip(),'cmd':' '.join(cmd)}\n\nif action in ('list','list_snapshots'):\n    res=run(['qm','listsnapshot',vmid])\n    print(json.dumps({'success':res['code']==0,'intent':'list_vm_snapshots','action':'list','vmid':vmid,'name':name,'node':node,'status':status,'snapshots_raw':res['stdout'],'error':res['stderr'] if res['code'] else None}, separators=(',',':'))); sys.exit(0)\n\nif action in ('rollback','revert'):\n    if not confirmed:\n        print(json.dumps({'success':False,'intent':'rollback_vm_snapshot','error':'confirmation_required','vmid':vmid,'name':name,'snapshot':snapshot,'message':f'Rollback of {name} (VMID {vmid}) to snapshot {snapshot} requires confirmation.'}, separators=(',',':'))); sys.exit(0)\n    if not snapshot:\n        print(json.dumps({'success':False,'error':'missing_snapshot','vmid':vmid,'name':name})); sys.exit(0)\n    res=run(['qm','rollback',vmid,snapshot])\n    print(json.dumps({'success':res['code']==0,'intent':'rollback_vm_snapshot','action':'rollback','vmid':vmid,'name':name,'snapshot':snapshot,'result':res,'message':f'Rollback requested for {name} to {snapshot}.' if res['code']==0 else 'Rollback failed.'}, separators=(',',':'))); sys.exit(0)\n\n# default: create snapshot\nif not snapshot:\n    ts=datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S')\n    snapshot=f'pre-ai-change-{vmid}-{ts}'\ndesc=f'NetClaw safety snapshot for {name} created before AI-assisted admin action'\nres=run(['qm','snapshot',vmid,snapshot,'--description',desc])\nprint(json.dumps({'success':res['code']==0,'intent':'create_vm_snapshot','action':'create','vmid':vmid,'name':name,'node':node,'status':status,'snapshot':snapshot,'result':res,'message':f'\u2705 Safety snapshot created for {name} (VMID {vmid}): {snapshot}' if res['code']==0 else 'Snapshot creation failed.'}, separators=(',',':')))\nPYSS\nrm -f \"$tmp\"\nBASH` }}"
+      },
+      "id": "ssh-snapshot",
+      "name": "SSH: Snapshot Manager",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        -80
+      ],
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "jsCode": "const stdout = String($json.stdout || '').trim();\nconst start = stdout.indexOf('{');\nconst end = stdout.lastIndexOf('}');\nif (start < 0 || end < start) return [{ json: { success:false, error:'no_json_from_snapshot_manager', stdout } }];\nconst r = JSON.parse(stdout.slice(start, end + 1));\nif (r.message) return [{ json: r }];\nif (r.action === 'list') {\n  r.message = `\ud83d\udcf8 Snapshots for ${r.name} (VMID ${r.vmid}):\\n\\n${r.snapshots_raw || 'No snapshots found.'}`;\n}\nreturn [{ json: r }];"
+      },
+      "id": "format",
+      "name": "Format Snapshot Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        -80
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "SSH: Snapshot Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SSH: Snapshot Manager": {
+      "main": [
+        [
+          {
+            "node": "Format Snapshot Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "ffd8f7fc-949a-4116-9a10-de87553deb45",
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-05-05T16:05:12.781Z",
+      "createdAt": "2026-05-05T16:05:12.781Z",
+      "role": "workflow:owner",
+      "workflowId": "O9qEG8xaIpdMVIaI",
+      "projectId": "9roC5DswFI9iUVME",
+      "project": {
+        "updatedAt": "2025-11-29T12:18:45.236Z",
+        "createdAt": "2025-11-29T10:46:36.921Z",
+        "id": "9roC5DswFI9iUVME",
+        "name": "MLAB Networking <hualiguideaiproject@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null
+      }
+    }
+  ]
+}

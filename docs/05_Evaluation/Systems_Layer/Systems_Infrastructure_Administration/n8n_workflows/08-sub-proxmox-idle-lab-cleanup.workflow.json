@@ -1,0 +1,141 @@
+{
+  "updatedAt": "2026-05-05T16:15:54.042Z",
+  "createdAt": "2026-05-05T16:15:53.287Z",
+  "id": "5HVdDUq7yIROyOFf",
+  "name": "Sub-Proxmox-Idle-Lab-Cleanup",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "tr",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -700,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sub-proxmox-idle-lab-cleanup",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -700,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources?type=vm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "list",
+      "name": "List VMs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -420,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const vms = Array.isArray($json.data) ? $json.data : [];\nfunction gb(b){const n=Number(b||0);return n?(n/1024/1024/1024).toFixed(1)+' GB':'0 GB'}\nfunction pct(x){return (Number(x||0)*100).toFixed(2)+'%'}\nfunction up(s){s=Number(s||0); if(!s)return '-'; const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600); return `${d}d ${h}h`;}\nconst candidates=[];\nfor (const vm of vms) {\n const cpu=Number(vm.cpu||0)*100; const net=Number(vm.netin||0)+Number(vm.netout||0); const stopped=vm.status==='stopped';\n let reason=null, recommendation=null;\n if (stopped) { reason='VM is stopped and consuming no active CPU/RAM, but disk/storage may be reclaimable if obsolete.'; recommendation='Review whether it should stay archived or be removed later; do not delete automatically.'; }\n else if (cpu < 1 && net < 100*1024*1024 && Number(vm.uptime||0)>3600) { reason='Running with very low CPU/network activity.'; recommendation='Candidate for stop-after-approval if not needed for lab work.'; }\n if (reason) candidates.push({vmid:String(vm.vmid),name:vm.name,node:vm.node,status:vm.status,cpu_usage:pct(vm.cpu),ram_total:gb(vm.maxmem),uptime:up(vm.uptime),reason,recommendation});\n}\nconst lines=['\ud83e\uddf9 *Idle Lab Cleanup Recommendations*',''];\nif (!candidates.length) lines.push('No obvious idle cleanup candidates found.');\nfor (const c of candidates){ const icon=c.status==='running'?'\ud83d\udfe2':'\ud83d\udd34'; lines.push(`${icon} *${c.vmid} \u2014 ${c.name}*`); lines.push(`   CPU: ${c.cpu_usage} | RAM allocation: ${c.ram_total} | Uptime: ${c.uptime}`); lines.push(`   Reason: ${c.reason}`); lines.push(`   Recommendation: ${c.recommendation}`); lines.push(''); }\nlines.push('\u26a0\ufe0f This is recommendation-only. Stopping/removing VMs must be approved separately.');\nreturn [{json:{success:true,intent:'cleanup_idle_vms',count:candidates.length,data:candidates,message:lines.join('\\n')}}];"
+      },
+      "id": "fmt",
+      "name": "Analyze Idle Candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        -80
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "List VMs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "List VMs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List VMs": {
+      "main": [
+        [
+          {
+            "node": "Analyze Idle Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "942fb21a-e1b6-4f9d-bdc4-597f69cf477e",
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-05-05T16:15:53.288Z",
+      "createdAt": "2026-05-05T16:15:53.288Z",
+      "role": "workflow:owner",
+      "workflowId": "5HVdDUq7yIROyOFf",
+      "projectId": "9roC5DswFI9iUVME",
+      "project": {
+        "updatedAt": "2025-11-29T12:18:45.236Z",
+        "createdAt": "2025-11-29T10:46:36.921Z",
+        "id": "9roC5DswFI9iUVME",
+        "name": "MLAB Networking <hualiguideaiproject@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null
+      }
+    }
+  ]
+}

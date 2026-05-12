@@ -1,0 +1,273 @@
+{
+  "updatedAt": "2026-05-05T16:06:19.365Z",
+  "createdAt": "2026-05-05T16:06:18.724Z",
+  "id": "thsz2pCu12NxVYfB",
+  "name": "Sub-Proxmox-Safe-Patching",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "execute-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -900,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sub-proxmox-safe-patching",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -900,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const input = $json.body || $json.query || $json;\nconst rawTarget = input.target ?? input.vmid ?? input.name ?? input.label ?? 'UbuntuTest';\nconst target = String(rawTarget).replace(/[^A-Za-z0-9_. -]/g, '').trim() || 'UbuntuTest';\nconst confirmed = !!input.confirmed;\nconst applyUpgrade = input.apply_upgrade !== false;\nif (!confirmed) {\n  return { json: { target, confirmed, apply_upgrade: applyUpgrade, stop_here: true, success: false, intent: 'safe_patch_vm', error: 'confirmation_required', message: `\u26a0\ufe0f Safe patching for ${target} requires approval. I will create a Proxmox snapshot first, then run OS updates, then perform health checks.` } };\n}\nreturn { json: { target, confirmed, apply_upgrade: applyUpgrade, stop_here: false, requested_at: new Date().toISOString() } };"
+      },
+      "id": "normalize",
+      "name": "Normalize / Confirmation Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -660,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.stop_here }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "confirmed",
+      "name": "Confirmed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -420,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $json }];"
+      },
+      "id": "return-confirm",
+      "name": "Return Confirmation Required",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "O9qEG8xaIpdMVIaI",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/O9qEG8xaIpdMVIaI",
+          "cachedResultName": "Sub-Proxmox-Snapshot-Manager"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "action": "create",
+            "target": "={{ $json.target }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "action",
+              "displayName": "action",
+              "type": "string"
+            },
+            {
+              "id": "target",
+              "displayName": "target",
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "create-snapshot",
+      "name": "Create Safety Snapshot",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -180,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "={{ `set -e\necho '===PRECHECK==='\nhostname\nuptime\nfree -h\ndf -h /\necho '===APT_UPDATE==='\nsudo apt update\necho '===UPGRADABLE_BEFORE==='\napt list --upgradable 2>/dev/null | head -40 || true\nif ${$json.apply_upgrade ? 'true' : 'false'}; then\n  echo '===APT_UPGRADE==='\n  sudo DEBIAN_FRONTEND=noninteractive apt -y upgrade\nelse\n  echo '===APT_UPGRADE_SKIPPED==='\nfi\necho '===HEALTH_AFTER==='\nuptime\nfree -h\ndf -h /\nsystemctl --failed --no-pager || true\n` }}"
+      },
+      "id": "ssh-patch",
+      "name": "SSH: Patch Ubuntu Test",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -180
+      ],
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "jsCode": "const snap = $('Create Safety Snapshot').first().json;\nconst out = String($json.stdout || '').trim();\nconst failed = /failed/i.test(out) && !/0 loaded units listed/i.test(out);\nconst lines=[];\nlines.push(`\ud83d\udee1\ufe0f *Safe Patching Complete \u2014 ${snap.name || snap.target || 'VM'}*`);\nlines.push(`\ud83d\udcf8 Snapshot: ${snap.snapshot || 'created'}`);\nlines.push('');\nlines.push('\u2705 Update command completed and health checks ran.');\nif (failed) lines.push('\u26a0\ufe0f Some failed services may need review.');\nlines.push('');\nlines.push('```');\nlines.push(out.split('\\n').slice(-80).join('\\n'));\nlines.push('```');\nlines.push('');\nlines.push('If the VM behaves badly after this, request rollback using the snapshot name above.');\nreturn [{ json: { success: true, intent: 'safe_patch_vm', target: snap.name || snap.target, snapshot: snap.snapshot, message: lines.join('\\n'), patch_output: out } }];"
+      },
+      "id": "format",
+      "name": "Format Safe Patch Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        -180
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize / Confirmation Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize / Confirmation Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize / Confirmation Gate": {
+      "main": [
+        [
+          {
+            "node": "Confirmed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmed?": {
+      "main": [
+        [
+          {
+            "node": "Create Safety Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Confirmation Required",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Safety Snapshot": {
+      "main": [
+        [
+          {
+            "node": "SSH: Patch Ubuntu Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SSH: Patch Ubuntu Test": {
+      "main": [
+        [
+          {
+            "node": "Format Safe Patch Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "ed440980-aebb-4b02-b720-b8893438db46",
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-05-05T16:06:18.725Z",
+      "createdAt": "2026-05-05T16:06:18.725Z",
+      "role": "workflow:owner",
+      "workflowId": "thsz2pCu12NxVYfB",
+      "projectId": "9roC5DswFI9iUVME",
+      "project": {
+        "updatedAt": "2025-11-29T12:18:45.236Z",
+        "createdAt": "2025-11-29T10:46:36.921Z",
+        "id": "9roC5DswFI9iUVME",
+        "name": "MLAB Networking <hualiguideaiproject@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null
+      }
+    }
+  ]
+}

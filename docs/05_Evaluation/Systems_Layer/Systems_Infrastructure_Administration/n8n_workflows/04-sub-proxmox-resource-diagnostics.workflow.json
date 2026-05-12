@@ -1,0 +1,207 @@
+{
+  "updatedAt": "2026-05-05T15:59:37.120Z",
+  "createdAt": "2026-05-05T15:59:36.298Z",
+  "id": "uXZIZQhGiNHp2SkW",
+  "name": "Sub-Proxmox-Resource-Diagnostics",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "execute-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sub-proxmox-resource-diagnostics",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -760,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const input = $json.body || $json.query || $json;\nconst rawTarget = input.target ?? input.vmid ?? input.name ?? input.label ?? 'UbuntuTest';\nconst target = String(rawTarget).replace(/[^A-Za-z0-9_. -]/g, '').trim() || 'UbuntuTest';\nreturn { json: { target, requested_at: new Date().toISOString() } };"
+      },
+      "id": "normalize",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "={{ `TARGET=${JSON.stringify($json.target || 'UbuntuTest')} bash -s <<'BASH'\nset -e\nTARGET=\"\\${TARGET:-UbuntuTest}\"\n# Use the resolver-style logic locally on Proxmox to find target VM metadata and IPv4.\ntmp=$(mktemp)\npvesh get /cluster/resources --type vm --output-format json > \"$tmp\"\npython3 - \"$TARGET\" \"$tmp\" <<'PYRES'\nimport json, sys, subprocess, re, ipaddress\n\ntarget=(sys.argv[1] or '').strip().lower()\nvms=[v for v in json.load(open(sys.argv[2])) if v.get('type')=='qemu']\n\ndef mac_for(vmid):\n    try: cfg=subprocess.check_output(['qm','config',str(vmid)], text=True, stderr=subprocess.DEVNULL)\n    except Exception: return None\n    for line in cfg.splitlines():\n        if line.startswith('net'):\n            m=re.search(r'(?:virtio|e1000|rtl8139|vmxnet3|ne2k_pci|pcnet)=([0-9A-Fa-f:]{17})', line)\n            if m: return m.group(1).lower()\n            m=re.search(r'MACAddress[:=]([0-9A-Fa-f:]{17})', line)\n            if m: return m.group(1).lower()\n    return None\n\ndef ips_for(mac):\n    if not mac: return []\n    ips=[]; seen=set()\n    try: neigh=subprocess.check_output(['ip','neighbor','show'], text=True, stderr=subprocess.DEVNULL)\n    except Exception: neigh=''\n    for line in neigh.splitlines():\n        if mac.lower() in line.lower():\n            ip=line.split()[0]\n            try: obj=ipaddress.ip_address(ip.split('%')[0])\n            except Exception: continue\n            if ip not in seen:\n                seen.add(ip); ips.append({'ip':ip,'version':obj.version,'is_link_local':obj.is_link_local})\n    if not any(i['version']==4 for i in ips):\n        for cmd in (['arp-scan','--interface=vmbr0','--localnet'], ['arp-scan','-l']):\n            try: scan=subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL, timeout=12); break\n            except Exception: scan=''\n        for line in scan.splitlines():\n            if mac.lower() in line.lower():\n                ip=line.split()[0]\n                try: obj=ipaddress.ip_address(ip)\n                except Exception: continue\n                if ip not in seen:\n                    seen.add(ip); ips.append({'ip':ip,'version':obj.version,'is_link_local':obj.is_link_local})\n    ips.sort(key=lambda r:(0 if r['version']==4 else 1, 1 if r['is_link_local'] else 0, r['ip']))\n    return ips\n\nmatch=None\nfor vm in vms:\n    vmid=str(vm.get('vmid','')); name=str(vm.get('name',''))\n    if vmid==target or target in name.lower():\n        match=vm; break\nif not match:\n    print(json.dumps({'success':False,'error':'vm_not_found','target':target}))\n    sys.exit(0)\nmac=mac_for(match['vmid']); ips=ips_for(mac)\nmatch_out={\n 'success':True,'vmid':str(match.get('vmid')),'name':match.get('name'),'node':match.get('node'),'status':match.get('status'),'type':match.get('type'),\n 'cpu':match.get('cpu'),'maxcpu':match.get('maxcpu'),'mem':match.get('mem'),'maxmem':match.get('maxmem'),'maxdisk':match.get('maxdisk'),\n 'diskread':match.get('diskread'),'diskwrite':match.get('diskwrite'),'netin':match.get('netin'),'netout':match.get('netout'),'uptime':match.get('uptime'),\n 'mac':mac,'ip':ips[0]['ip'] if ips else None,'ipv4':next((i['ip'] for i in ips if i['version']==4), None),'ips':ips\n}\nprint(json.dumps(match_out, separators=(',',':')))\nPYRES\nrm -f \"$tmp\"\nBASH` }}"
+      },
+      "id": "ssh-proxmox",
+      "name": "SSH: Collect Proxmox Metrics",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        -80
+      ],
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const stdout = String($json.stdout || '').trim();\nconst start = stdout.indexOf('{');\nconst end = stdout.lastIndexOf('}');\nif (start < 0 || end < start) return { json: { success:false, error:'no_json_from_proxmox', stdout } };\nconst vm = JSON.parse(stdout.slice(start, end + 1));\nif (!vm.success) return { json: vm };\nreturn { json: vm };"
+      },
+      "id": "parse-proxmox",
+      "name": "Parse Proxmox Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "={{ `echo '===HOST==='; hostname; echo '===UPTIME==='; uptime; echo '===MEMORY==='; free -h; echo '===DISK==='; df -h --total | tail -n +1; echo '===TOP_CPU==='; ps aux --sort=-%cpu | head -6; echo '===TOP_MEM==='; ps aux --sort=-%mem | head -6; echo '===SERVICES==='; systemctl --failed --no-pager || true` }}"
+      },
+      "id": "ssh-guest",
+      "name": "SSH: Guest OS Diagnostics",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        260,
+        -80
+      ],
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "jsCode": "function gb(bytes) { const n=Number(bytes||0); return n ? (n/1024/1024/1024).toFixed(1)+' GB' : '0 GB'; }\nfunction pct(frac) { const n=Number(frac||0)*100; return n.toFixed(n>=10?1:2)+'%'; }\nfunction uptime(sec){ sec=Number(sec||0); if(!sec) return '-'; const d=Math.floor(sec/86400), h=Math.floor((sec%86400)/3600), m=Math.floor((sec%3600)/60); return `${d}d ${h}h ${m}m`; }\nconst vm = $('Parse Proxmox Metrics').first().json;\nconst guest = $json.stdout ? String($json.stdout) : '';\nconst memPct = vm.maxmem ? (Number(vm.mem||0)/Number(vm.maxmem)*100) : 0;\nlet recommendation = 'No immediate critical issue detected from Proxmox metrics.';\nif (memPct >= 90) recommendation = 'High RAM pressure detected. Consider closing workloads, restarting heavy services, or increasing RAM after approval.';\nelse if ((Number(vm.cpu||0)*100) >= 80) recommendation = 'High CPU usage detected. Inspect top CPU processes and consider service restart or CPU increase after approval.';\nelse if (vm.status !== 'running') recommendation = 'VM is not running. Start it before guest-level diagnostics.';\nconst lines=[];\nlines.push(`\ud83e\uddea *Resource Diagnostics \u2014 ${vm.name}*`);\nlines.push(`\ud83d\udda5\ufe0f VMID: ${vm.vmid} | Node: ${vm.node} | State: ${vm.status}`);\nlines.push(`\ud83c\udf10 IP: ${vm.ipv4 || vm.ip || 'unknown'} | MAC: ${vm.mac || 'unknown'}`);\nlines.push('');\nlines.push('\ud83d\udcca *Proxmox Metrics*');\nlines.push(`\ud83e\udde0 RAM: ${gb(vm.mem)} / ${gb(vm.maxmem)} (${memPct.toFixed(1)}%)`);\nlines.push(`\u2699\ufe0f CPU: ${pct(vm.cpu)} of ${vm.maxcpu || '-'} cores`);\nlines.push(`\ud83d\udcbe Disk Size: ${gb(vm.maxdisk)}`);\nlines.push(`\ud83c\udf10 Network: In ${gb(vm.netin)} / Out ${gb(vm.netout)}`);\nlines.push(`\u23f1\ufe0f Uptime: ${uptime(vm.uptime)}`);\nif (guest) {\n  lines.push(''); lines.push('\ud83d\udd0e *Guest OS Snapshot*');\n  const keep = guest.split('\\n').slice(0, 80).join('\\n');\n  lines.push('```'); lines.push(keep); lines.push('```');\n}\nlines.push(''); lines.push(`\ud83d\udca1 *Recommendation:* ${recommendation}`);\nreturn [{ json: { success:true, intent:'diagnose_vm_resources', target: vm.name, data:{...vm, ram_used:gb(vm.mem), ram_total:gb(vm.maxmem), ram_usage:memPct.toFixed(1)+'%', cpu_usage:pct(vm.cpu), uptime_text:uptime(vm.uptime), guest_output:guest, recommendation}, message: lines.join('\\n') } }];"
+      },
+      "id": "format",
+      "name": "Format Diagnostics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        -80
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "SSH: Collect Proxmox Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SSH: Collect Proxmox Metrics": {
+      "main": [
+        [
+          {
+            "node": "Parse Proxmox Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Proxmox Metrics": {
+      "main": [
+        [
+          {
+            "node": "SSH: Guest OS Diagnostics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SSH: Guest OS Diagnostics": {
+      "main": [
+        [
+          {
+            "node": "Format Diagnostics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "22853fd8-6439-4609-85ca-ed7dd4823e80",
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-05-05T15:59:36.300Z",
+      "createdAt": "2026-05-05T15:59:36.300Z",
+      "role": "workflow:owner",
+      "workflowId": "uXZIZQhGiNHp2SkW",
+      "projectId": "9roC5DswFI9iUVME",
+      "project": {
+        "updatedAt": "2025-11-29T12:18:45.236Z",
+        "createdAt": "2025-11-29T10:46:36.921Z",
+        "id": "9roC5DswFI9iUVME",
+        "name": "MLAB Networking <hualiguideaiproject@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null
+      }
+    }
+  ]
+}

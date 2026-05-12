@@ -1,0 +1,178 @@
+{
+  "updatedAt": "2026-05-05T16:37:48.926Z",
+  "createdAt": "2026-05-05T16:15:15.793Z",
+  "id": "XxvFYnpqb1e1zfjI",
+  "name": "Sub-Proxmox-Ghost-VM-Recovery",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sub-proxmox-ghost-vm-recovery",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -700,
+        -180
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "tr",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -700,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const input=$json.body||$json.query||$json; const raw=input.target??input.vmid??input.name??input.label??'UbuntuTest'; const target=String(raw).replace(/[^A-Za-z0-9_. -]/g,'').trim()||'UbuntuTest'; const service=String(input.service||input.port||'').trim(); return {json:{target,service,confirmed:!!input.confirmed}};"
+      },
+      "id": "norm",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "6H9qIGjGiO4vME8i",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/6H9qIGjGiO4vME8i",
+          "cachedResultName": "Sub-Proxmox-IP-Resolver"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "target": "={{ $json.target }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "target",
+              "displayName": "target",
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "resolver",
+      "name": "Resolve VM/IP",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $json;\nconst data = r.data || r;\nconst ip = data.ipv4 || data.ip || null;\nconst lines = [];\nlines.push(`\ud83e\ude7a *Ghost VM Recovery Check \u2014 ${data.name || r.target || 'VM'}*`);\nlines.push(`\ud83d\udda5\ufe0f VMID: ${data.vmid || '-'} | State: ${data.status || '-'} | IP: ${ip || 'unknown'}`);\nlines.push('');\nif (data.status !== 'running') {\n  lines.push('\ud83d\udd34 VM is not running. Recommended action: start VM after approval.');\n} else if (!ip) {\n  lines.push('\u26a0\ufe0f VM is running but no IP was resolved. Recommended action: check bridge/ARP/DHCP or install QEMU Guest Agent.');\n} else {\n  lines.push('\u2705 VM is running and has an IP.');\n  lines.push('Next escalation path: ping \u2192 SSH \u2192 service/docker logs \u2192 service restart \u2192 VM reboot only if approved.');\n}\nlines.push('');\nlines.push('\ud83d\udca1 *Recommendation:* Least-disruptive recovery first. Do not hard reset unless service restart/reboot is approved.');\nreturn { json: { success: true, intent: 'recover_ghost_vm', target: data.name || r.target, data, message: lines.join('\\n') } };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "fmt",
+      "name": "Format Recovery Advice",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Resolve VM/IP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve VM/IP": {
+      "main": [
+        [
+          {
+            "node": "Format Recovery Advice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "0368369c-a3d8-4db5-a813-965e5de7b7b6",
+  "versionCounter": 6,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-05-05T16:15:15.795Z",
+      "createdAt": "2026-05-05T16:15:15.795Z",
+      "role": "workflow:owner",
+      "workflowId": "XxvFYnpqb1e1zfjI",
+      "projectId": "9roC5DswFI9iUVME",
+      "project": {
+        "updatedAt": "2025-11-29T12:18:45.236Z",
+        "createdAt": "2025-11-29T10:46:36.921Z",
+        "id": "9roC5DswFI9iUVME",
+        "name": "MLAB Networking <hualiguideaiproject@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null
+      }
+    }
+  ]
+}

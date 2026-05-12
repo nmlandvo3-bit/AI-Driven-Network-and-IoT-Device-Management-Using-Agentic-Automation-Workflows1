@@ -1,0 +1,2247 @@
+{
+  "updatedAt": "2026-05-05T18:30:00.797Z",
+  "createdAt": "2025-12-14T02:02:41.647Z",
+  "id": "tNl89wvBdjLdJfHK",
+  "name": "Proxmox Admin Bot",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1264,
+        432
+      ],
+      "id": "1374d12f-086c-44f6-893f-0390b330b163",
+      "name": "Telegram Trigger",
+      "webhookId": "6ac425a6-ea95-43a0-a377-6d2ab8485bd1",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $json.message;\nconst text = (msg?.text || \"\").trim().toLowerCase();\n\nreturn [{\n  json: {\n    chatId: msg.chat.id,\n    userId: msg.from.id,\n    username: msg.from.username || msg.from.first_name,\n    rawText: msg.text,\n    command: text,\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        432
+      ],
+      "id": "845e1754-717b-4ae4-8f2d-e7e9e8b69491",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "let cmd = ($json.command ?? \"\").trim().toLowerCase();\nconst rawText = $json.rawText || cmd;\n\n// Natural-language bridge into the new OpenClaw Proxmox Orchestrator.\nif (/(slow|lag|lagging|performance|cpu|ram|memory|diagnose|diagnostic|why)/.test(cmd) && /(ubuntu|test|vm|machine)/.test(cmd)) {\n  cmd = 'diagnose vm 105';\n}\nif (/(idle|unused|cleanup|clean up|save resources|old vms)/.test(cmd)) {\n  cmd = 'cleanup vms';\n}\nif (/(cannot access|can't access|cant access|unreachable|not responding|app down|server down|service down)/.test(cmd)) {\n  cmd = 'recover vm 105';\n}\n\nconst structuredPatterns = [\n  /^help$/,\n  /^node status$/,\n  /^list vms$/,\n  /^recent errors$/,\n  /^recent tasks$/,\n  /^start vm\\s+\\S+/,\n  /^stop vm\\s+\\S+/,\n  /^reboot vm\\s+\\S+/,\n  /^check updates\\s+\\S+/,\n  /^update\\s+\\S+/,\n  /^diagnose vm\\s+\\S+/,\n  /^cleanup vms$/,\n  /^recover vm\\s+\\S+/\n];\n\nconst isStructured = structuredPatterns.some(p => p.test(cmd));\nreturn [{ json: { command: cmd, rawText, chatId: $json.chatId, userId: $json.userId, username: $json.username, isStructured } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -816,
+        432
+      ],
+      "id": "499853a4-0776-4705-a7f3-7f25151c274f",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "960158b6-c393-408b-85e8-865fbfe9819a",
+              "leftValue": "={{ $json.userId }}",
+              "rightValue": 6141941871,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -592,
+        432
+      ],
+      "id": "911473e4-5b03-4f8c-be0c-c9e467f0e81b",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cacdb883-f6bb-4868-968d-d8a8fe724ac1",
+              "leftValue": "={{ $json.isStructured }}",
+              "rightValue": "=",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -368,
+        432
+      ],
+      "id": "d578dd24-5d6e-420e-a0dd-3ce88f8261fb",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = ($json.command ?? \"\").trim().toLowerCase();\n\n// Tokenize\nconst parts = text.split(/\\s+/);\n\nconst action = parts[0];        // help, list, start, stop, etc.\nconst subject = parts[1] || \"\"; // vm, vms, node\nconst target = parts[2] || \"\";  // vmid or name\n\nreturn [{\n  json: {\n    ...$json,\n    action,\n    subject,\n    target\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        432
+      ],
+      "id": "48e4993e-71b9-40a0-a5f2-8572eecf1274",
+      "name": "Parse Command"
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 10,
+        "output": "={{\n  $json.action === 'help' ? 0 :\n  $json.action === 'list' ? 1 :\n  $json.action === 'start' ? 2 :\n  $json.action === 'stop' ? 3 :\n  $json.action === 'reboot' ? 4 :\n  $json.action === 'check' ? 5 :\n  $json.action === 'update' ? 6 :\n  $json.action === 'diagnose' ? 7 :\n  $json.action === 'cleanup' ? 8 :\n  $json.action === 'recover' ? 9 :\n  -1\n}}\n"
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        80,
+        352
+      ],
+      "id": "d5059dd1-71b0-4255-9105-45c5babb0a19",
+      "name": "Route Structured Command"
+    },
+    {
+      "parameters": {
+        "chatId": "6141941871",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        752,
+        -528
+      ],
+      "id": "85a7a22a-abc3-43ae-ac75-3f717b1a5d07",
+      "name": "Send a text message",
+      "webhookId": "172e33f4-c740-407f-bfac-2ff73e02b22f",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        304,
+        -528
+      ],
+      "id": "c3d9d5b0-7a54-45ac-a328-47b4492122ea",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const vms = $json.data || [];\n\nconst vmList = vms.map(vm =>\n  `\u2022 ${vm.vmid} \u2014 ${vm.name || 'unnamed'} (${vm.status})`\n).join('\\n');\n\nconst helpText = `\n\ud83d\udee0 Proxmox Admin Bot \u2014 Commands\n\nAvailable commands:\n- help\n- list vms\n- start vm <vmid>\n- stop vm <vmid>\n- reboot vm <vmid>\n- check updates <vmid>\n- update <vmid>\n\n\ud83d\udce6 Available VMs:\n${vmList || 'No VMs found'}\n`;\n\nreturn [{\n  json: {\n    chatId: $json.chatId,\n    message: helpText\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        -528
+      ],
+      "id": "0093301e-f305-46ea-bf8e-1fb979afd895",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources?type=vm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        304,
+        -336
+      ],
+      "id": "16cd7b29-8d76-4915-a225-c5c18ab20735",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const vms = $json.data || [];\n\nif (!vms.length) {\n  return [{\n    json: {\n      chatId: $json.chatId,\n      message: \"\u26a0\ufe0f No VMs found on the cluster.\"\n    }\n  }];\n}\n\nconst lines = vms.map(vm => {\n  const statusIcon = vm.status === 'running' ? '\ud83d\udfe2' : '\ud83d\udd34';\n  return `${statusIcon} VMID: ${vm.vmid}\\n   Name: ${vm.name || 'unnamed'}\\n   Node: ${vm.node}\\n   Status: ${vm.status}`;\n});\n\nconst message = `\ud83d\udce6 *Proxmox Virtual Machines*\\n\\n${lines.join('\\n\\n')}`;\n\nreturn [{\n  json: {\n    chatId: $json.chatId,\n    message\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        -336
+      ],
+      "id": "5d6b0cc8-dfeb-4654-ad80-5f3e25774106",
+      "name": "VM List"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        752,
+        -336
+      ],
+      "id": "aeb1a3ff-c7ce-4572-b2db-768b3a53905e",
+      "name": "Send a text message1",
+      "webhookId": "bb0cea06-7f9a-4603-a822-9b4058510fe4",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- 1. Get VMID from the Parse Command node ---\nconst vmid = String($node[\"Parse Command\"].json.target);\n\n// --- 2. Read HTTP Request response safely ---\nconst responseItem = $input.all()[0].json;\nconst vms = Array.isArray(responseItem.data)\n  ? responseItem.data\n  : [];\n\n// --- 3. Find VM ---\nconst match = vms.find(vm => String(vm.vmid) === vmid);\n\n// --- 4. VM not found \u2192 ERROR ---\nif (!match) {\n  return [{\n    json: {\n      chatId: $node[\"Parse Command\"].json.chatId,\n      error: true,\n      message:\n        `\u274c VM ID ${vmid} does not exist.\\n\\n` +\n        `Available VM IDs:\\n` +\n        vms.map(v => `\u2022 ${v.vmid} \u2014 ${v.name}`).join('\\n')\n    }\n  }];\n}\n\n// --- 5. VM exists \u2192 enrich context ---\nreturn [{\n  json: {\n    ...$node[\"Parse Command\"].json,\n    vmExists: true,\n    vmid: vmid,\n    vmName: match.name,\n    vmNode: match.node,\n    vmStatus: match.status,\n    vmType: match.type\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        -144
+      ],
+      "id": "486c9372-eed2-4b02-9731-1d0911ae5688",
+      "name": "Validate VMID"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        976,
+        -240
+      ],
+      "id": "0fa18a06-a150-4dc6-bd83-ca93f15faf88",
+      "name": "Send a text message2",
+      "webhookId": "833960bb-3046-483d-b968-9eb20621a2de",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources?type=vm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        304,
+        -144
+      ],
+      "id": "45667ab5-d067-4318-a8d0-5dff1ea05c0d",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e28b3ae7-0873-4150-a616-fcbd043e5dd2",
+              "leftValue": "={{ $json.vmStatus }}",
+              "rightValue": "running",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        976,
+        -48
+      ],
+      "id": "76c48332-1fc4-4d2c-9287-96e6413f215e",
+      "name": "state guard"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=\u26a0\ufe0f VM {{ $json.vmid }} ({{ $json.vmName }}) is already running.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        48
+      ],
+      "id": "d494e96f-a1a3-4d56-8139-c2f56a7f4b9f",
+      "name": "Send a text message3",
+      "webhookId": "2db5bbbf-a436-4b43-aecf-ce8e2884777f",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7a7fa36a-ed6e-4f4f-88ca-5e6cdf6a0048",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        752,
+        -144
+      ],
+      "id": "d7a16492-8f03-46c5-bc4d-38322374d31a",
+      "name": "If Command Or ID is Wrong"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('If').item.json.chatId }}",
+        "text": "=\u2705 *VM Started Successfully*\n\n\ud83d\uded1 *VM Stop Requested Successfully*\n\n\ud83d\udda5 Name: {{ $('Validate VMID').item.json.vmName }}\n\ud83c\udd94 VM ID: {{ $('Validate VMID').item.json.vmid }}\n\ud83d\udccd Node: {{ $('Validate VMID').item.json.vmNode }}\n\nThe virtual machine is now booting \ud83d\ude80\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1424,
+        -144
+      ],
+      "id": "bc1d73a3-0d96-479b-8e1d-e74ed7c66b28",
+      "name": "Send a text message4",
+      "webhookId": "90bec603-2fee-4709-b3af-c5d875732792",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \n  `https://192.168.0.100:8006/api2/json/nodes/${$json.vmNode}/${$json.vmType}/${$json.vmid}/status/start`\n}}\n",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1200,
+        -144
+      ],
+      "id": "48bc6eaa-584f-4c6b-84a2-54249422399b",
+      "name": "Start VM Http API Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- 1. Get VMID from the Parse Command node ---\nconst vmid = String($node[\"Parse Command\"].json.target);\n\n// --- 2. Read HTTP Request response safely ---\nconst responseItem = $input.all()[0].json;\nconst vms = Array.isArray(responseItem.data)\n  ? responseItem.data\n  : [];\n\n// --- 3. Find VM ---\nconst match = vms.find(vm => String(vm.vmid) === vmid);\n\n// --- 4. VM not found \u2192 ERROR ---\nif (!match) {\n  return [{\n    json: {\n      chatId: $node[\"Parse Command\"].json.chatId,\n      error: true,\n      message:\n        `\u274c VM ID ${vmid} does not exist.\\n\\n` +\n        `Available VM IDs:\\n` +\n        vms.map(v => `\u2022 ${v.vmid} \u2014 ${v.name}`).join('\\n')\n    }\n  }];\n}\n\n// --- 5. VM exists \u2192 enrich context ---\nreturn [{\n  json: {\n    ...$node[\"Parse Command\"].json,\n    vmExists: true,\n    vmid: vmid,\n    vmName: match.name,\n    vmNode: match.node,\n    vmStatus: match.status,\n    vmType: match.type\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        432
+      ],
+      "id": "de993fcb-ab78-4f81-afa8-04a20bb46f9a",
+      "name": "Validate VMID1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        976,
+        528
+      ],
+      "id": "cafd69e5-51d4-43e0-8ef6-ec66369cb2cc",
+      "name": "Send a text message5",
+      "webhookId": "833960bb-3046-483d-b968-9eb20621a2de",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources?type=vm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        304,
+        432
+      ],
+      "id": "d22a536f-7307-4889-b423-65eab7f7aa8d",
+      "name": "HTTP Request3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e28b3ae7-0873-4150-a616-fcbd043e5dd2",
+              "leftValue": "={{ $json.vmStatus }}",
+              "rightValue": "stopped",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        976,
+        336
+      ],
+      "id": "395bf42a-d9de-495c-89c2-a4ac24a7be77",
+      "name": "state guard1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=\u26a0\ufe0f VM {{ $json.vmid }} ({{ $json.vmName }}) is already stopped.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        432
+      ],
+      "id": "7657f5f4-dd35-4750-b514-3df7736b51ae",
+      "name": "Send a text message6",
+      "webhookId": "2db5bbbf-a436-4b43-aecf-ce8e2884777f",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7a7fa36a-ed6e-4f4f-88ca-5e6cdf6a0048",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "4480b17b-f0f9-4e12-8347-6737c1a80f05",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        752,
+        432
+      ],
+      "id": "88a4a26b-655a-4987-b7f5-12849f5503c5",
+      "name": "If Command Or ID is Wrong1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('If').item.json.chatId }}",
+        "text": "=\ud83d\uded1 *VM Stop Requested Successfully*\n\n\ud83d\udda5 Name: {{ $('Validate VMID1').item.json.vmName }}\n\ud83c\udd94 VM ID: {{ $('Validate VMID1').item.json.vmid }}\n\ud83d\udccd Node: {{ $('Validate VMID1').item.json.vmNode }}\n\nThe virtual machine is shutting down.\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1424,
+        240
+      ],
+      "id": "55fb5069-39a2-4254-b28b-7bb89ac7391f",
+      "name": "Send a text message7",
+      "webhookId": "90bec603-2fee-4709-b3af-c5d875732792",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \n  `https://192.168.0.100:8006/api2/json/nodes/${$json.vmNode}/${$json.vmType}/${$json.vmid}/status/stop`\n}}\n",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1200,
+        240
+      ],
+      "id": "7658a50e-8e59-49ad-a903-52dcc42885bb",
+      "name": "Start VM Http API Trigger1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- 1. Get VMID from the Parse Command node ---\nconst vmid = String($node[\"Parse Command\"].json.target);\n\n// --- 2. Read HTTP Request response safely ---\nconst responseItem = $input.all()[0].json;\nconst vms = Array.isArray(responseItem.data)\n  ? responseItem.data\n  : [];\n\n// --- 3. Find VM ---\nconst match = vms.find(vm => String(vm.vmid) === vmid);\n\n// --- 4. VM not found \u2192 ERROR ---\nif (!match) {\n  return [{\n    json: {\n      chatId: $node[\"Parse Command\"].json.chatId,\n      error: true,\n      message:\n        `\u274c VM ID ${vmid} does not exist.\\n\\n` +\n        `Available VM IDs:\\n` +\n        vms.map(v => `\u2022 ${v.vmid} \u2014 ${v.name}`).join('\\n')\n    }\n  }];\n}\n\n// --- 5. VM exists \u2192 enrich context ---\nreturn [{\n  json: {\n    ...$node[\"Parse Command\"].json,\n    vmExists: true,\n    vmid: vmid,\n    vmName: match.name,\n    vmNode: match.node,\n    vmStatus: match.status,\n    vmType: match.type\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        816
+      ],
+      "id": "f863c0ff-d133-439c-8bc3-c0c9bf2c442a",
+      "name": "Validate VMID2"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        976,
+        912
+      ],
+      "id": "ecc02f04-fb50-4560-972a-0d59d81fc070",
+      "name": "Send a text message8",
+      "webhookId": "833960bb-3046-483d-b968-9eb20621a2de",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources?type=vm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        304,
+        816
+      ],
+      "id": "3fc386f5-8a22-426c-99d9-1a4b0e538849",
+      "name": "HTTP Request4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e28b3ae7-0873-4150-a616-fcbd043e5dd2",
+              "leftValue": "={{ $json.vmStatus }}",
+              "rightValue": "running",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        976,
+        720
+      ],
+      "id": "11bf31cb-abd7-40c1-82a9-29d845599c52",
+      "name": "state guard2"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=\u26a0\ufe0f Cannot reboot VM\n\n\ud83d\udda5 Name: {{ $json.vmName }}\n\ud83c\udd94 VM ID: {{ $json.vmid }}\n\ud83d\udccd Node: {{ $json.vmNode }}\nStatus: {{ $json.vmStatus }}\n\nThe VM must be running to reboot.\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        816
+      ],
+      "id": "ec42f89d-90f3-49bf-89d5-3d618e55ed06",
+      "name": "Send a text message9",
+      "webhookId": "2db5bbbf-a436-4b43-aecf-ce8e2884777f",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7a7fa36a-ed6e-4f4f-88ca-5e6cdf6a0048",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "4480b17b-f0f9-4e12-8347-6737c1a80f05",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        752,
+        816
+      ],
+      "id": "f8ea7f68-fba7-4883-a3e3-6b636a6191be",
+      "name": "If Command Or ID is Wrong2"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('If').item.json.chatId }}",
+        "text": "=\ud83d\udd04 *VM Reboot Initiated*\n\n\ud83d\udda5 Name: {{ $('state guard2').item.json.vmName }}\n\ud83c\udd94 VM ID: {{ $('state guard2').item.json.vmid }}\n\ud83d\udccd Node: {{ $('state guard2').item.json.vmNode }}\n\nThe virtual machine is rebooting.\n\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1424,
+        624
+      ],
+      "id": "5831fd3b-9e13-446b-b821-3c8780560e29",
+      "name": "Send a text message10",
+      "webhookId": "90bec603-2fee-4709-b3af-c5d875732792",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \n  `https://192.168.0.100:8006/api2/json/nodes/${$json.vmNode}/${$json.vmType}/${$json.vmid}/status/reboot`\n}}\n",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1200,
+        624
+      ],
+      "id": "7c3f15f0-8a41-443b-838e-ec9ffac93d89",
+      "name": "Start VM Http API Trigger2"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('If').item.json.chatId }}",
+        "text": "=\u274c Cannot update VM {{ $json.vmName }} (ID {{ $json.vmid }})\nStatus is {{ $json.vmStatus }}.\n\nStart it first: start vm {{ $json.vmid }}\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        976,
+        1296
+      ],
+      "id": "a9eb83a4-8643-4c6f-89cd-bd571454ecaa",
+      "name": "Send a text message11",
+      "webhookId": "90bec603-2fee-4709-b3af-c5d875732792",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- 1. Get VMID from the Parse Command node ---\nconst vmid = String($node[\"Parse Command\"].json.target);\n\n// --- 2. Read HTTP Request response safely ---\nconst responseItem = $input.all()[0].json;\nconst vms = Array.isArray(responseItem.data)\n  ? responseItem.data\n  : [];\n\n// --- 3. Find VM ---\nconst match = vms.find(vm => String(vm.vmid) === vmid);\n\n// --- 4. VM not found \u2192 ERROR ---\nif (!match) {\n  return [{\n    json: {\n      chatId: $node[\"Parse Command\"].json.chatId,\n      error: true,\n      message:\n        `\u274c VM ID ${vmid} does not exist.\\n\\n` +\n        `Available VM IDs:\\n` +\n        vms.map(v => `\u2022 ${v.vmid} \u2014 ${v.name}`).join('\\n')\n    }\n  }];\n}\n\n// --- 5. VM exists \u2192 enrich context ---\nreturn [{\n  json: {\n    ...$node[\"Parse Command\"].json,\n    vmExists: true,\n    vmid: vmid,\n    vmName: match.name,\n    vmNode: match.node,\n    vmStatus: match.status,\n    vmType: match.type\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        1200
+      ],
+      "id": "1c3d6470-f985-44cc-b93d-85e1f1cbcd4b",
+      "name": "Validate VMID3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e28b3ae7-0873-4150-a616-fcbd043e5dd2",
+              "leftValue": "={{ $json.vmStatus }}",
+              "rightValue": "running",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        752,
+        1200
+      ],
+      "id": "42594f42-c433-4972-8e2b-5a07e3e972d8",
+      "name": "state guard3"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('If').item.json.chatId }}",
+        "text": "=\ud83d\udcca *VM Status*\n\n\ud83d\udda5 Name: {{ $json.vmName }}\n\ud83c\udd94 VM ID: {{ $json.vmid }}\n\ud83d\udccd Node: {{ $json.vmNode }}\n\u2699\ufe0f Type: {{ $json.vmType }}\n\ud83d\udce1 Status: {{ $json.vmStatus }}\n\nUse:\n\u2022 start vm {{ $json.vmid }}\n\u2022 stop vm {{ $json.vmid }}\n\u2022 reboot vm {{ $json.vmid }}\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -720,
+        2432
+      ],
+      "id": "9f60eed2-4058-4eb9-8a2b-f7e5e8d3e90c",
+      "name": "Send a text message12",
+      "webhookId": "90bec603-2fee-4709-b3af-c5d875732792",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "url": "=https://192.168.0.100:8006/api2/json/nodes/{{$json.vmNode}}/{{$json.vmType}}/{{$json.vmid}}/agent/network-get-interfaces\n",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        976,
+        1104
+      ],
+      "id": "14d1d50f-73dc-4641-98de-dbcd60109818",
+      "name": "HTTP Request5"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Proxmox guest-agent network-get-interfaces result\nconst interfaces =\n  $json.data?.result ??\n  [];\n\n// Helper: is usable IPv4?\nfunction isValidIPv4(ip) {\n  return (\n    /^\\d{1,3}(\\.\\d{1,3}){3}$/.test(ip) &&\n    !ip.startsWith(\"127.\") &&\n    !ip.startsWith(\"169.254.\")\n  );\n}\n\nlet selectedIP = null;\nlet selectedIface = null;\n\n// Preferred interface name order\nconst preferredIfaces = [\"ens\", \"eth\", \"enp\"];\n\nfor (const iface of interfaces) {\n  const name = iface.name || \"\";\n\n  // Skip loopback and bridges explicitly\n  if (name === \"lo\" || name.startsWith(\"virbr\")) continue;\n\n  const ips = iface[\"ip-addresses\"] || [];\n\n  for (const entry of ips) {\n    if (entry[\"ip-address-type\"] === \"ipv4\") {\n      const ip = entry[\"ip-address\"];\n      if (isValidIPv4(ip)) {\n        selectedIP = ip;\n        selectedIface = name;\n        break;\n      }\n    }\n  }\n\n  if (selectedIP) break;\n}\n\n// Fallback: any valid IPv4 anywhere\nif (!selectedIP) {\n  for (const iface of interfaces) {\n    const ips = iface[\"ip-addresses\"] || [];\n    for (const entry of ips) {\n      if (\n        entry[\"ip-address-type\"] === \"ipv4\" &&\n        isValidIPv4(entry[\"ip-address\"])\n      ) {\n        selectedIP = entry[\"ip-address\"];\n        selectedIface = iface.name;\n        break;\n      }\n    }\n    if (selectedIP) break;\n  }\n}\n\n// \u274c No usable IP found\nif (!selectedIP) {\n  return [{\n    json: {\n      ...$json,\n      error: true,\n      message:\n        \"\u26a0\ufe0f VM is running but no usable IPv4 address was found.\\n\" +\n        \"Ensure the VM has DHCP or a static IP configured.\",\n      ipSource: \"guest-agent\"\n    }\n  }];\n}\n\n// \u2705 Success\nreturn [{\n  json: {\n    ...$json,\n    vmIP: selectedIP,\n    vmInterface: selectedIface,\n    ipSource: \"guest-agent\"\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        1104
+      ],
+      "id": "96a2f777-d4ce-4914-a2a0-a0a065656db4",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ec3b1e7f-7b94-4083-8a44-1d625eb8a2bf",
+              "leftValue": "={{ $json.vmIP }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1424,
+        1104
+      ],
+      "id": "01858351-2663-4157-8bed-21a848fb6057",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "command": "=echo \"{{$json.sshPassword}}\" | sudo -S apt update -qq && apt list --upgradable"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        2544,
+        1200
+      ],
+      "id": "06140ebc-6c92-4f50-8374-23a4f9d57672",
+      "name": "Execute a command",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('If').item.json.chatId }}",
+        "text": "=\u274c Unable to determine IP for VM\n\n\ud83d\udda5 Name: {{vmName}}\n\ud83c\udd94 ID: {{vmid}}\n\nReason:\n\u2022 QEMU Guest Agent not installed or not running\n\nFix:\n1\ufe0f\u20e3 Install `qemu-guest-agent` inside the VM\n2\ufe0f\u20e3 Enable Guest Agent in Proxmox\n3\ufe0f\u20e3 Re-run the update command\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1648,
+        1200
+      ],
+      "id": "3a52121a-60b7-4e13-9d58-8389c2c551e6",
+      "name": "Send a text message13",
+      "webhookId": "90bec603-2fee-4709-b3af-c5d875732792",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('If').item.json.chatId }}",
+        "text": "=\ud83d\udd10 SSH credentials required\n\nVM: UbuntuDesktop\nVM ID: 105\nIP: 192.168.0.129\n\nReply with:\nssh user=<username> password=<password>\n\nSession ID:\n{{ $json.resumeUrl }}\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1872,
+        1008
+      ],
+      "id": "80efa1ef-9ec0-401a-9752-19456bec73d9",
+      "name": "Send a text message14",
+      "webhookId": "90bec603-2fee-4709-b3af-c5d875732792",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2096,
+        1008
+      ],
+      "id": "2fc3daaf-651a-431d-8183-89de50533d2d",
+      "name": "Wait",
+      "webhookId": "eade2a04-607a-4388-8af1-a629fde789ad"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = ($json.message?.text || \"\").trim();\n\nif (!text.startsWith(\"ssh \")) {\n  return [{\n    json: {\n      chatId: $json.chat.id,\n      error: true,\n      message: \"\u274c Expected: ssh <username> <password>\"\n    }\n  }];\n}\n\nconst [, user, pass] = text.split(/\\s+/);\n\nif (!user || !pass) {\n  return [{\n    json: {\n      chatId: $json.chat.id,\n      error: true,\n      message: \"\u274c Invalid SSH format.\\nUse: ssh <user> <password>\"\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    sshUser: user,\n    sshPass: pass,\n    chatId: $json.chat.id\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        1200
+      ],
+      "id": "d09196d1-acf7-4fd2-b67e-7149ed7e1222",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const stdout = $json.stdout || \"\";\n\n// remove the \"Listing...\" line, keep package lines\nconst updates = stdout\n  .split(\"\\n\")\n  .map(l => l.trim())\n  .filter(l => l && !l.startsWith(\"Listing\"));\n\nreturn [{\n  json: {\n    ...$json,\n    updatesAvailable: updates.length > 0,\n    updatesCount: updates.length,\n    updatesList: updates.join(\"\\n\"),\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        1200
+      ],
+      "id": "aee449d4-da8a-43ce-b845-04623a199195",
+      "name": "Code in JavaScript5"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9f1b554f-41dd-4e31-8ecc-5bc18aef29e7",
+              "leftValue": "={{$json.updatesAvailable}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2992,
+        1200
+      ],
+      "id": "2b2572ec-9d57-4fc5-8e26-6b10f88841bc",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('If').item.json.chatId }}",
+        "text": "=\u2705 {{$json.vmName}} (VM {{$json.vmid}}) is already up to date.\nNo packages to upgrade.\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3216,
+        1296
+      ],
+      "id": "e6f980c4-5469-4b9b-b507-ddd4e111001a",
+      "name": "Send a text message15",
+      "webhookId": "90bec603-2fee-4709-b3af-c5d875732792",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('If').item.json.chatId }}",
+        "text": "=\u26a0\ufe0f Updates available on {{$json.vmName}} (VM {{$json.vmid}})\n\nCount: {{$json.updatesCount}}\n\n{{$json.updatesList}}\n\nReply:\nYES = apply updates\nNO = cancel\n\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3216,
+        1104
+      ],
+      "id": "d395c152-2332-4bd5-9345-28b53bdf8a76",
+      "name": "Send a text message16",
+      "webhookId": "90bec603-2fee-4709-b3af-c5d875732792",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3440,
+        1104
+      ],
+      "id": "e3336ebf-0469-4190-b1bf-0e0ad99c6103",
+      "name": "Wait1",
+      "webhookId": "22305271-b3a4-4f30-9e3b-3ff7f79dde3f"
+    },
+    {
+      "parameters": {
+        "jsCode": "const reply = String($json.rawText || \"\").trim().toLowerCase();\n\nif (reply !== \"yes\") {\n  return [{\n    json: {\n      ...$json,\n      cancelled: true,\n      message: \"\u274c Update cancelled. No changes made.\"\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...$json,\n    confirmed: true\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3664,
+        1104
+      ],
+      "id": "763c18af-5c08-4c51-868d-fcce406b73d5",
+      "name": "Code in JavaScript6"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8946f260-f964-4bf8-a623-664bd2f8fa28",
+              "leftValue": "={{$json.confirmed}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3888,
+        1104
+      ],
+      "id": "c1b1f441-2ae1-4992-b78a-d5466305c41c",
+      "name": "If4"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('If').item.json.chatId }}",
+        "text": "={{$json.message}}\n\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4112,
+        1200
+      ],
+      "id": "82d447d5-2917-4072-8c64-3ad4c53340b4",
+      "name": "Send a text message17",
+      "webhookId": "90bec603-2fee-4709-b3af-c5d875732792",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "command": "=echo \"{{$json.sshPassword}}\" | sudo -S apt -y upgrade"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        4112,
+        1008
+      ],
+      "id": "676545e5-a10e-44ee-94f3-c434f126edfa",
+      "name": "Execute a command1",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('If').item.json.chatId }}",
+        "text": "=\u2705 Updates installed successfully on {{$json.vmName}} (VM {{$json.vmid}}).\n\n\n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4336,
+        1008
+      ],
+      "id": "050b5949-469e-4475-8e2c-dbcefd009fc1",
+      "name": "Send a text message18",
+      "webhookId": "90bec603-2fee-4709-b3af-c5d875732792",
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "url": "https://192.168.0.100:8006/api2/json/cluster/resources?type=vm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<REDACTED>"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        304,
+        1272
+      ],
+      "id": "b6398a9f-a1f4-44f5-ae7d-8b9a027a7db5",
+      "name": "HTTP Request6"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    ...$json,\n    resumeUrl: $execution.resumeUrl\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1648,
+        1008
+      ],
+      "id": "8a277a88-7e68-4529-a683-fccff6e3fec6",
+      "name": "Code in JavaScript7"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.resumeUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"ssh\": {\n    \"username\": \"{{$json.username}}\",\n    \"password\": \"{{$json.password}}\"\n  },\n  \"chatId\": \"{{$json.chatId}}\",\n  \"confirmed\": true\n}\n",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2096,
+        1296
+      ],
+      "id": "2cc4536f-027d-4f6a-901b-aef5e30023d8",
+      "name": "HTTP Request7"
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $json;\nreturn [{ json: { chatId: $(\"Parse Command\").item.json.chatId, message: r.message || r.reply_text || JSON.stringify(r) } }];"
+      },
+      "id": "format-orchestrator",
+      "name": "Format Orchestrator Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        1180
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "id": "send-orchestrator",
+      "name": "Send Orchestrator Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1680,
+        1180
+      ],
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const msg = $json.message || {};\nconst chatId = msg.chat?.id || $json.chatId || '';\nconst userId = msg.from?.id || $json.userId || '';\nconst username = msg.from?.username || msg.from?.first_name || $json.username || 'admin';\nconst rawText = String(msg.text || $json.text || $json.rawText || '').trim();\nconst text = rawText.toLowerCase().replace(/[.,!?;:]/g, ' ').replace(/\\s+/g, ' ').trim();\n\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.pending) staticData.pending = {};\nconst key = String(chatId || userId || 'default');\n\nfunction supported(t) {\n  return /(ubuntu|test|vm|vms|machine|machines|proxmox|server|servers|snapshot|rollback|safe|safely|patch|update|upgrade|slow|lag|performance|cpu|ram|memory|disk|idle|cleanup|clean up|cannot access|unreachable|ip|ips|status|start|stop|reboot|restart)/.test(t);\n}\nfunction stateChanging(t) {\n  return /(safe|safely|patch|update|upgrade|rollback|roll back|revert|start|stop|reboot|restart|reset|shutdown|power off|power on)/.test(t);\n}\nfunction intentHint(t) {\n  if (/(safe|safely|patch|update|upgrade)/.test(t) && /(ubuntu|test|vm|machine|server)/.test(t)) return 'safe_patch_vm';\n  if (/(slow|lag|lagging|performance|cpu|ram|memory|disk|diagnose|diagnostic|why)/.test(t)) return 'diagnose_vm_resources';\n  if (/(cannot access|unreachable|not responding|app down|server down|service down|people cannot access)/.test(t)) return 'recover_ghost_vm';\n  if (/(idle|unused|cleanup|clean up|save resources|old vms|waste)/.test(t)) return 'cleanup_idle_vms';\n  if (/(create|take|make)/.test(t) && /(snapshot|backup|restore point)/.test(t)) return 'create_vm_snapshot';\n  if (/(rollback|roll back|revert|restore)/.test(t)) return 'rollback_vm_snapshot';\n  if (/(ip|ips|address|addresses)/.test(t)) return 'get_all_vm_ips';\n  if (/(list|show|status|statuses|details|detailed|info|information)/.test(t) && /(vm|vms|machine|machines|server|servers)/.test(t)) return 'list_vm_status';\n  if (/\\bstart\\b|power on|turn on|boot/.test(t)) return 'start_vm';\n  if (/\\bstop\\b|shutdown|shut down|power off|turn off/.test(t)) return 'stop_vm';\n  if (/\\breboot\\b|restart|reset/.test(t)) return 'reboot_vm';\n  return '';\n}\nfunction targetHint(t) {\n  if (/(ubuntu\\s*test|ubuntutest|mlab\\s*test|mlab-test|\\b105\\b)/.test(t)) return { vmid: '105', proxmox_name: 'UbuntuTest', canonical_name: 'ubuntu-test-vm' };\n  const m = t.match(/\\b(10[2-7])\\b/);\n  if (m) return { vmid: m[1] };\n  return null;\n}\nfunction payload(confirmed=false) {\n  return {\n    source: 'mlab-admin-telegram',\n    channel: 'telegram',\n    user_id: String(userId),\n    user_name: username,\n    chat_id: String(chatId),\n    raw_text: rawText,\n    text: rawText,\n    chatInput: rawText,\n    intent: intentHint(text),\n    target: targetHint(text),\n    confirmed,\n    requires_confirmation: stateChanging(text),\n    request_id: `tg_${Date.now()}`\n  };\n}\n\nif (/^(yes|y|yeah|yebo|yep|ok|okay|approved|approve|confirm|confirmed|go ahead|proceed|do it)$/i.test(rawText)) {\n  const pending = staticData.pending[key];\n  if (!pending) {\n    return { json: { direct_reply: true, chatId, message: 'There is no pending Proxmox action to confirm.' } };\n  }\n  delete staticData.pending[key];\n  pending.confirmed = true;\n  pending.request_id = `tg_${Date.now()}`;\n  return { json: { direct_reply: false, chatId, payload: pending } };\n}\nif (/^(no|cancel|stop|never mind|nevermind)$/i.test(rawText)) {\n  delete staticData.pending[key];\n  return { json: { direct_reply: true, chatId, message: 'Cancelled.' } };\n}\n\nif (!supported(text)) {\n  return { json: { direct_reply: true, chatId, message: '\ud83d\udee0 *Mlab Admin*\\n\\nI can help with Proxmox VM operations:\\n\\n\u2022 `Ubuntu Test is slow`\\n\u2022 `People cannot access Ubuntu Test`\\n\u2022 `find idle VMs and suggest cleanup`\\n\u2022 `create snapshot of Ubuntu Test`\\n\u2022 `safely update Ubuntu Test`\\n\u2022 `list VMs` / `get all VM IPs`\\n\u2022 `start vm 105` / `stop vm 105` / `reboot vm 105`' } };\n}\n\nconst p = payload(false);\nif (p.requires_confirmation) {\n  staticData.pending[key] = p;\n  const action = (p.intent || 'requested action').replace(/_/g, ' ');\n  return { json: { direct_reply: true, chatId, message: `\u26a0\ufe0f *Confirmation required*\\n\\nAction: ${action}\\nTarget: ${p.target?.proxmox_name || p.target?.vmid || 'requested VM'}\\n\\nReply *yes* to continue or *cancel* to stop.` } };\n}\nreturn { json: { direct_reply: false, chatId, payload: p } };"
+      },
+      "id": "mlab-admin-main-router",
+      "name": "Mlab Admin Main Router",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.direct_reply }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "need-direct-reply",
+      "name": "Need Direct Reply?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -800,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "reply-direct-confirmation",
+      "name": "Reply Direct Confirmation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -540,
+        -80
+      ],
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $(\"Mlab Admin Main Router\").item.json.chatId }}",
+        "text": "={{ $json.message || $json.reply_text || ($json.success === false ? `\u26a0\ufe0f Action failed: ${$json.error || 'unknown error'}` : '\u2705 Request completed.') }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-orchestrator-message",
+      "name": "Send Orchestrator Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -280,
+        160
+      ],
+      "credentials": "<REDACTED_CREDENTIAL_REFERENCE>"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "LDOfaQU10lYbt2Yy",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/LDOfaQU10lYbt2Yy",
+          "cachedResultName": "OpenClaw Proxmox Orchestrator"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "source": "={{ $json.payload.source }}",
+            "channel": "={{ $json.payload.channel }}",
+            "user_id": "={{ $json.payload.user_id }}",
+            "user_name": "={{ $json.payload.user_name }}",
+            "chat_id": "={{ $json.payload.chat_id }}",
+            "raw_text": "={{ $json.payload.raw_text }}",
+            "text": "={{ $json.payload.text }}",
+            "chatInput": "={{ $json.payload.chatInput }}",
+            "intent": "={{ $json.payload.intent }}",
+            "target": "={{ $json.payload.target }}",
+            "confirmed": "={{ $json.payload.confirmed }}",
+            "requires_confirmation": "={{ $json.payload.requires_confirmation }}",
+            "request_id": "={{ $json.payload.request_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "source",
+              "displayName": "source",
+              "type": "string"
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "type": "string"
+            },
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "type": "string"
+            },
+            {
+              "id": "user_name",
+              "displayName": "user_name",
+              "type": "string"
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "type": "string"
+            },
+            {
+              "id": "raw_text",
+              "displayName": "raw_text",
+              "type": "string"
+            },
+            {
+              "id": "text",
+              "displayName": "text",
+              "type": "string"
+            },
+            {
+              "id": "chatInput",
+              "displayName": "chatInput",
+              "type": "string"
+            },
+            {
+              "id": "intent",
+              "displayName": "intent",
+              "type": "string"
+            },
+            {
+              "id": "target",
+              "displayName": "target",
+              "type": "string"
+            },
+            {
+              "id": "confirmed",
+              "displayName": "confirmed",
+              "type": "string"
+            },
+            {
+              "id": "requires_confirmation",
+              "displayName": "requires_confirmation",
+              "type": "string"
+            },
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "execute-openclaw-proxmox-orchestrator",
+      "name": "Call OpenClaw Proxmox Orchestrator",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -540,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Mlab Admin Main Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Parse Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Command": {
+      "main": [
+        [
+          {
+            "node": "Route Structured Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Structured Command": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate VMID3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request6",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call OpenClaw Proxmox Orchestrator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call OpenClaw Proxmox Orchestrator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call OpenClaw Proxmox Orchestrator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "VM List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VM List": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate VMID": {
+      "main": [
+        [
+          {
+            "node": "If Command Or ID is Wrong",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Validate VMID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "state guard": {
+      "main": [
+        [
+          {
+            "node": "Send a text message3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Start VM Http API Trigger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Command Or ID is Wrong": {
+      "main": [
+        [
+          {
+            "node": "Send a text message2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "state guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start VM Http API Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send a text message4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate VMID1": {
+      "main": [
+        [
+          {
+            "node": "If Command Or ID is Wrong1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3": {
+      "main": [
+        [
+          {
+            "node": "Validate VMID1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "state guard1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message6",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Start VM Http API Trigger1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Command Or ID is Wrong1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "state guard1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start VM Http API Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate VMID2": {
+      "main": [
+        [
+          {
+            "node": "If Command Or ID is Wrong2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request4": {
+      "main": [
+        [
+          {
+            "node": "Validate VMID2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "state guard2": {
+      "main": [
+        [
+          {
+            "node": "Send a text message9",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Start VM Http API Trigger2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Command Or ID is Wrong2": {
+      "main": [
+        [
+          {
+            "node": "Send a text message8",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "state guard2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start VM Http API Trigger2": {
+      "main": [
+        [
+          {
+            "node": "Send a text message10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate VMID3": {
+      "main": [
+        [
+          {
+            "node": "state guard3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "state guard3": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request5": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript7",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message13",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message14": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Execute a command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a command": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript5": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Send a text message16",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message15",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message16": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript6": {
+      "main": [
+        [
+          {
+            "node": "If4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If4": {
+      "main": [
+        [
+          {
+            "node": "Execute a command1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message17",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a command1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message18",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request6": {
+      "main": [
+        [
+          {
+            "node": "Validate VMID3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript7": {
+      "main": [
+        [
+          {
+            "node": "Send a text message14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request7": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call OpenClaw Proxmox Orchestrator": {
+      "main": [
+        [
+          {
+            "node": "Send Orchestrator Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Orchestrator Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Orchestrator Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mlab Admin Main Router": {
+      "main": [
+        [
+          {
+            "node": "Need Direct Reply?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Need Direct Reply?": {
+      "main": [
+        [
+          {
+            "node": "Reply Direct Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call OpenClaw Proxmox Orchestrator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": {
+    "global": {
+      "pending": {}
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "00717f94-d2dc-4b7b-9ef8-36664c60af8b",
+  "versionCounter": 80,
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2025-12-14T02:02:41.649Z",
+      "createdAt": "2025-12-14T02:02:41.649Z",
+      "role": "workflow:owner",
+      "workflowId": "tNl89wvBdjLdJfHK",
+      "projectId": "9roC5DswFI9iUVME",
+      "project": {
+        "updatedAt": "2025-11-29T12:18:45.236Z",
+        "createdAt": "2025-11-29T10:46:36.921Z",
+        "id": "9roC5DswFI9iUVME",
+        "name": "MLAB Networking <hualiguideaiproject@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null
+      }
+    }
+  ]
+}
