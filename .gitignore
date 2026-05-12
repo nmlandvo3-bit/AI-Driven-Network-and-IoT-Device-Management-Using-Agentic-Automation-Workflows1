@@ -1,0 +1,17 @@
+# Runtime/local state
+tmp/
+*.tmp
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+
+# Secrets and credentials
+*.key
+*.pem
+.env
+.env.*
+*_token*
+*secret*

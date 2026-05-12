@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "last_updated": "2026-04-15",
+  "last_updated": "2026-05-12",
   "source": {
     "platform": "proxmox",
     "endpoint": "cluster/resources?type=vm",
@@ -20,6 +20,33 @@
   },
   "vms": [
     {
+      "canonical_name": "iot-core-vm",
+      "aliases": [
+        "iot core",
+        "iot-core",
+        "iot core vm",
+        "iot vm",
+        "mqtt server",
+        "telemetry server",
+        "iot backend"
+      ],
+      "vmid": "100",
+      "node": "fmtagency",
+      "proxmox_name": "IOT-CORE",
+      "platform": "proxmox",
+      "type": "qemu",
+      "role": "iot-core-services",
+      "os": "linux",
+      "status_last_seen": "running",
+      "actions_allowed": [
+        "status",
+        "start",
+        "stop",
+        "reboot",
+        "diagnostics"
+      ]
+    },
+    {
       "canonical_name": "windows-11-vm",
       "aliases": [
         "windows 11",
@@ -37,7 +64,12 @@
       "role": "windows-workstation",
       "os": "windows-11",
       "status_last_seen": "stopped",
-      "actions_allowed": ["status", "start", "stop", "reboot"]
+      "actions_allowed": [
+        "status",
+        "start",
+        "stop",
+        "reboot"
+      ]
     },
     {
       "canonical_name": "mlab-ubuntu-server",
@@ -57,7 +89,13 @@
       "role": "ubuntu-server",
       "os": "ubuntu",
       "status_last_seen": "running",
-      "actions_allowed": ["status", "start", "stop", "reboot", "check_updates"]
+      "actions_allowed": [
+        "status",
+        "start",
+        "stop",
+        "reboot",
+        "check_updates"
+      ]
     },
     {
       "canonical_name": "gns3-vm-test",
@@ -77,11 +115,23 @@
       "role": "gns3-lab-test",
       "os": "ubuntu",
       "status_last_seen": "stopped",
-      "actions_allowed": ["status", "start", "stop", "reboot"]
+      "actions_allowed": [
+        "status",
+        "start",
+        "stop",
+        "reboot"
+      ]
     },
     {
-      "canonical_name": "ubuntu-ollama-vm",
+      "canonical_name": "ubuntu-test-vm",
       "aliases": [
+        "ubuntu test",
+        "ubuntutest",
+        "ubuntu test vm",
+        "mlab test",
+        "mlab-test",
+        "test vm",
+        "test machine",
         "ubuntu ollama",
         "ollama vm",
         "ubuntu ollama vm",
@@ -91,13 +141,20 @@
       ],
       "vmid": "105",
       "node": "fmtagency",
-      "proxmox_name": "Ubuntu-Ollama-VM-25",
+      "proxmox_name": "UbuntuTest",
       "platform": "proxmox",
       "type": "qemu",
-      "role": "ollama-inference",
-      "os": "ubuntu",
-      "status_last_seen": "stopped",
-      "actions_allowed": ["status", "start", "stop", "reboot", "check_updates"]
+      "role": "ubuntu-test-lab",
+      "os": "ubuntu-24.04",
+      "status_last_seen": "running",
+      "actions_allowed": [
+        "status",
+        "start",
+        "stop",
+        "reboot",
+        "check_updates",
+        "diagnostics"
+      ]
     },
     {
       "canonical_name": "ubuntu-desktop-vm",
@@ -117,7 +174,13 @@
       "role": "ubuntu-desktop",
       "os": "ubuntu-24.04",
       "status_last_seen": "running",
-      "actions_allowed": ["status", "start", "stop", "reboot", "check_updates"]
+      "actions_allowed": [
+        "status",
+        "start",
+        "stop",
+        "reboot",
+        "check_updates"
+      ]
     },
     {
       "canonical_name": "gns3-vm",
@@ -140,7 +203,12 @@
       "role": "gns3-lab-production",
       "os": "ubuntu",
       "status_last_seen": "running",
-      "actions_allowed": ["status", "start", "stop", "reboot"]
+      "actions_allowed": [
+        "status",
+        "start",
+        "stop",
+        "reboot"
+      ]
     }
   ],
   "clarification_templates": {
