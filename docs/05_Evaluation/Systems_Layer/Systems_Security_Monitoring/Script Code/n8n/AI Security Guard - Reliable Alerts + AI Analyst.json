@@ -1,0 +1,604 @@
+{
+  "name": "AI Security Guard - Reliable Alerts + AI Analyst",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "3fd47cbc-5573-4b8e-8d94-d5308d9c8585",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1008,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date().toISOString();\n\nreturn [{\n  json: {\n    mode: 'scheduled',\n    host: 'mlab-test',\n    timeframe: 'today',\n    requestType: 'scheduled_monitoring',\n    chatId: '6925837675',\n    fromUser: 'system',\n    originalRequest: 'Scheduled security monitoring check',\n    attentionThreshold: 5,\n    requestedAt: now\n  }\n}];"
+      },
+      "id": "7a8f2414-ac09-4452-ae2d-d4008ff0f7b6",
+      "name": "Normalize Scheduled Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "sudo -n /usr/local/sbin/collect-company-logs.sh today"
+      },
+      "id": "536dd543-811c-48ef-a034-85cbf08268bc",
+      "name": "Collect Scheduled Logs",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        784
+      ],
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "MAXuCiO0YgMmNsxJ",
+          "name": "SSH Private Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = String($json.stdout || '');\nconst stderr = String($json.stderr || '');\nconst req = $item(0).$node['Normalize Scheduled Request'].json;\n\nconst clean = (text) =>\n  text\n    .split('\\n')\n    .map(v => v.replace(/\\r/g, '').trim())\n    .filter(Boolean);\n\nconst lines = clean(raw);\nconst knownUsers = ['employee1', 'employee2', 'employee3', 'intern1', 'contractor1'];\n\nconst perUserCounts = {};\nconst userCommands = {};\n\nfor (const user of knownUsers) {\n  perUserCounts[user] = {\n    status: 'OK',\n    failed_sudo: 0,\n    policy_warnings: 0,\n    tmp_script_exec: 0,\n    software_install: 0,\n    persistence_attempt: 0,\n    total_violations: 0\n  };\n  userCommands[user] = [];\n}\n\nlet currentUser = null;\n\nfor (const line of lines) {\n  if (line.startsWith('USER=')) {\n    currentUser = line.split('=')[1]?.trim();\n    continue;\n  }\n\n  if (currentUser && perUserCounts[currentUser]) {\n    const [key, value] = line.split('=');\n\n    if (key === 'status') perUserCounts[currentUser].status = value;\n    if (key === 'failed_sudo') perUserCounts[currentUser].failed_sudo = Number(value) || 0;\n    if (key === 'policy_warnings') perUserCounts[currentUser].policy_warnings = Number(value) || 0;\n    if (key === 'tmp_script_exec') perUserCounts[currentUser].tmp_script_exec = Number(value) || 0;\n    if (key === 'software_install') perUserCounts[currentUser].software_install = Number(value) || 0;\n    if (key === 'persistence_attempt') perUserCounts[currentUser].persistence_attempt = Number(value) || 0;\n    if (key === 'total_violations') perUserCounts[currentUser].total_violations = Number(value) || 0;\n  }\n\n  if (line.includes('COMPANY_POLICY_WARNING')) {\n    const userMatch = line.match(/user=([a-zA-Z0-9_-]+)/);\n    const cmdMatch = line.match(/command='([^']+)'/);\n\n    if (userMatch && cmdMatch) {\n      const user = userMatch[1];\n      const cmd = cmdMatch[1];\n\n      if (userCommands[user]) {\n        userCommands[user].push(cmd);\n      }\n    }\n  }\n}\n\nfor (const user of Object.keys(userCommands)) {\n  userCommands[user] = [...new Set(userCommands[user])];\n}\n\nconst warnings = [];\nconst attentionUsers = [];\nlet totalPolicyViolations = 0;\n\nfor (const [user, data] of Object.entries(perUserCounts)) {\n  totalPolicyViolations += data.total_violations;\n\n  if (data.total_violations >= req.attentionThreshold || data.status === 'NEEDS_ATTENTION') {\n    attentionUsers.push({\n      user,\n      count: data.total_violations,\n      status: data.status,\n      commands: userCommands[user]\n    });\n  } else if (data.total_violations > 0 || data.policy_warnings > 0) {\n    warnings.push({\n      user,\n      count: data.total_violations,\n      policy_warnings: data.policy_warnings,\n      status: data.status,\n      commands: userCommands[user]\n    });\n  }\n}\n\nreturn [{\n  json: {\n    ...req,\n    perUserCounts,\n    violationSummary: perUserCounts,\n    warnings,\n    attentionUsers,\n    totalPolicyViolations,\n    userCommands,\n    alertNeeded: attentionUsers.length > 0,\n    shouldAlertByRule: attentionUsers.length > 0,\n    hasWarnings: warnings.length > 0,\n    rawLineCount: lines.length,\n    missingCollector: /script missing:/i.test(raw),\n    stderr\n  }\n}];"
+      },
+      "id": "471fa5b9-c450-4882-9c28-271130b6adfa",
+      "name": "Parse Scheduled Security Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "scheduled-alert-needed-condition",
+              "leftValue": "={{ $json.alertNeeded }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a4dc2b0c-c1de-4a09-bda0-a975702ed3bc",
+      "name": "If Scheduled Alert Needed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json;\n\nconst host = data.host || 'mlab-test';\nconst timeframe = data.timeframe || 'today';\nconst total = Number(data.totalPolicyViolations || 0);\nconst attentionUsers = Array.isArray(data.attentionUsers) ? data.attentionUsers : [];\nconst warnings = Array.isArray(data.warnings) ? data.warnings : [];\n\nfunction uniqueCommands(commands) {\n  if (!Array.isArray(commands) || commands.length === 0) return [];\n  return [...new Set(commands.filter(Boolean))];\n}\n\nfunction formatAttention(userObj) {\n  const user = userObj.user || 'unknown user';\n  const count = Number(userObj.count || 0);\n  const commands = uniqueCommands(userObj.commands);\n\n  if (commands.length === 0) {\n    return `- ${user}: ${count} policy warnings, needs admin review.`;\n  }\n\n  return `- ${user}: ${count} policy warnings, needs admin review, tried to run: ${commands.join(', ')} ${count} times.`;\n}\n\nfunction formatWarning(userObj) {\n  const user = userObj.user || 'unknown user';\n  const count = Number(userObj.count || userObj.policy_warnings || 0);\n  const commands = uniqueCommands(userObj.commands);\n\n  if (commands.length === 0) {\n    return `- ${user}: ${count} policy warnings, below the admin-review threshold.`;\n  }\n\n  return `- ${user}: ${count} policy warnings, below the admin-review threshold, tried to run: ${commands.join(', ')} ${count} times.`;\n}\n\nconst attentionText = attentionUsers.length ? attentionUsers.map(formatAttention).join('\\n') : '- None';\nconst warningText = warnings.length ? warnings.map(formatWarning).join('\\n') : '- None';\n\nconst stoodOut = [];\n\nif (attentionUsers.length > 0) {\n  stoodOut.push(`${attentionUsers.length} user(s) crossed the admin-review threshold.`);\n}\n\nfor (const userObj of attentionUsers.slice(0, 2)) {\n  const commands = uniqueCommands(userObj.commands);\n  stoodOut.push(`${userObj.user} reached ${userObj.count} policy warnings${commands.length ? ` after trying to run: ${commands.join(', ')}` : ''}.`);\n}\n\nfor (const userObj of warnings.slice(0, 2)) {\n  const commands = uniqueCommands(userObj.commands);\n  stoodOut.push(`${userObj.user} has ${userObj.count || userObj.policy_warnings} policy warnings but is still below the admin-review threshold${commands.length ? ` after trying to run: ${commands.join(', ')}` : ''}.`);\n}\n\nif (stoodOut.length === 0) {\n  stoodOut.push('No users crossed the admin-review threshold.');\n}\n\nconst assessment = attentionUsers.length > 0\n  ? 'This appears to be repeated policy-warning activity, not confirmed malware or compromise.'\n  : warnings.length > 0\n    ? 'This is warning-level policy activity and has not reached the admin-review threshold.'\n    : 'No policy-warning activity was detected in this check.';\n\nconst recommendedAction = attentionUsers.length > 0\n  ? `Review ${attentionUsers.map(u => u.user).join(', ')} activity and consider temporarily restricting the account(s) pending admin review.`\n  : warnings.length > 0\n    ? 'Continue monitoring these users and review activity if the warnings continue.'\n    : 'Continue routine monitoring.';\n\nconst telegramMessage = [\n  '🚨 AI Security Guard Alert',\n  `Host: ${host}`,\n  `Timeframe: ${timeframe}`,\n  `Violation count: ${total}`,\n  '',\n  'Users needing attention:',\n  attentionText,\n  '',\n  'Other warnings:',\n  warningText,\n  '',\n  'What stood out:',\n  ...stoodOut.slice(0, 4).map(line => `- ${line}`),\n  '',\n  'Assessment:',\n  assessment,\n  '',\n  'Recommended action:',\n  recommendedAction\n].join('\\n');\n\nreturn [{\n  json: {\n    ...data,\n    shouldSendTelegram: attentionUsers.length > 0,\n    telegramMessage\n  }\n}];"
+      },
+      "id": "2c0a9724-da24-4045-9b93-fa22b990e436",
+      "name": "Build Scheduled Telegram Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId || '6925837675' }}",
+        "text": "={{ $json.output || 'No AI security report was produced.' }}",
+        "additionalFields": {}
+      },
+      "id": "092ed499-089e-4754-baa3-80bbaf8119e5",
+      "name": "Send Scheduled Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        688,
+        784
+      ],
+      "webhookId": "ai-security-guard-scheduled-alert",
+      "credentials": {
+        "telegramApi": {
+          "id": "hZIUsjpPDHoxgKDp",
+          "name": "IPHONE TELEGRAM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "c570d6bf-d5ae-4ee2-98e7-fb18fb6fab9d",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1008,
+        352
+      ],
+      "webhookId": "ai-security-guard-telegram-trigger",
+      "credentials": {
+        "telegramApi": {
+          "id": "hZIUsjpPDHoxgKDp",
+          "name": "IPHONE TELEGRAM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "if-telegram-report-request-condition",
+              "leftValue": "={{ $json.isReportRequest }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c4df7a5e-2560-4567-934d-83bdef5c8717",
+      "name": "If Telegram Report Request",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "Send a message like:\n/report today\n/report last 5 days\nshow warnings for employee2\nwhich users need attention?\nwhy was employee3 flagged?\ncompare employee3 and contractor1\nsummarize today's security activity",
+        "additionalFields": {}
+      },
+      "id": "81408518-4401-493b-82da-10fc37ab22c0",
+      "name": "Send Help Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        16,
+        448
+      ],
+      "webhookId": "ai-security-guard-help-message",
+      "credentials": {
+        "telegramApi": {
+          "id": "hZIUsjpPDHoxgKDp",
+          "name": "IPHONE TELEGRAM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "={{ 'sudo -n /usr/local/sbin/collect-company-logs.sh ' + JSON.stringify($json.timeframe || 'today') }}"
+      },
+      "id": "218e9459-4399-4865-87cc-83862bf17a39",
+      "name": "Collect Chat Requested Logs",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        16,
+        256
+      ],
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "MAXuCiO0YgMmNsxJ",
+          "name": "SSH Private Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = String($json.stdout || '');\nconst stderr = String($json.stderr || '');\n\n/**\n * Safely get request context from whichever upstream node exists.\n */\nfunction getNodeJson(nodeName) {\n  try {\n    return $item(0).$node[nodeName].json;\n  } catch (e) {\n    return null;\n  }\n}\n\nconst req =\n  getNodeJson('Parse AI Intent Output') ||\n  getNodeJson('Normalize Telegram Request') ||\n  getNodeJson('Normalize Report Request') ||\n  $json ||\n  {};\n\nconst clean = (text) =>\n  text\n    .split('\\n')\n    .map(v => v.replace(/\\r/g, '').trim())\n    .filter(Boolean);\n\nconst lines = clean(raw);\n\nconst knownUsers = [\n  'employee1',\n  'employee2',\n  'employee3',\n  'intern1',\n  'contractor1'\n];\n\nconst perUserCounts = {};\nconst userCommandsRaw = {};\n\nfor (const user of knownUsers) {\n  perUserCounts[user] = {\n    status: 'OK',\n    failed_sudo: 0,\n    policy_warnings: 0,\n    sudo_commands: 0,\n    tmp_script_exec: 0,\n    software_install: 0,\n    persistence_attempt: 0,\n    total_violations: 0\n  };\n\n  userCommandsRaw[user] = [];\n}\n\nlet currentUser = null;\n\nfor (const line of lines) {\n  if (line.startsWith('USER=')) {\n    currentUser = line.split('=')[1]?.trim();\n    continue;\n  }\n\n  if (currentUser && perUserCounts[currentUser]) {\n    const [key, value] = line.split('=');\n\n    if (key === 'status') perUserCounts[currentUser].status = value;\n    if (key === 'failed_sudo') perUserCounts[currentUser].failed_sudo = Number(value) || 0;\n    if (key === 'policy_warnings') perUserCounts[currentUser].policy_warnings = Number(value) || 0;\n    if (key === 'sudo_commands') perUserCounts[currentUser].sudo_commands = Number(value) || 0;\n    if (key === 'tmp_script_exec') perUserCounts[currentUser].tmp_script_exec = Number(value) || 0;\n    if (key === 'software_install') perUserCounts[currentUser].software_install = Number(value) || 0;\n    if (key === 'persistence_attempt') perUserCounts[currentUser].persistence_attempt = Number(value) || 0;\n    if (key === 'total_violations') perUserCounts[currentUser].total_violations = Number(value) || 0;\n  }\n\n  if (line.includes('COMPANY_POLICY_WARNING')) {\n    const userMatch = line.match(/user=([a-zA-Z0-9_-]+)/);\n    const cmdMatch = line.match(/command='([^']+)'/);\n\n    if (userMatch && cmdMatch) {\n      const user = userMatch[1];\n      const cmd = cmdMatch[1];\n\n      if (userCommandsRaw[user]) {\n        userCommandsRaw[user].push(cmd);\n      }\n    }\n  }\n}\n\nconst userCommands = {};\nfor (const user of Object.keys(userCommandsRaw)) {\n  userCommands[user] = [...new Set(userCommandsRaw[user])];\n}\n\nconst warnings = [];\nconst attentionUsers = [];\nlet totalPolicyViolations = 0;\n\nconst threshold = Number(req.attentionThreshold || 5);\n\nfor (const [user, data] of Object.entries(perUserCounts)) {\n  totalPolicyViolations += data.total_violations;\n\n  if (data.total_violations >= threshold || data.status === 'NEEDS_ATTENTION') {\n    attentionUsers.push({\n      user,\n      count: data.total_violations,\n      status: data.status,\n      commands: userCommands[user],\n      policy_warnings: data.policy_warnings,\n      software_install: data.software_install,\n      failed_sudo: data.failed_sudo\n    });\n  } else if (data.total_violations > 0 || data.policy_warnings > 0) {\n    warnings.push({\n      user,\n      count: data.total_violations,\n      status: data.status,\n      commands: userCommands[user],\n      policy_warnings: data.policy_warnings,\n      software_install: data.software_install,\n      failed_sudo: data.failed_sudo\n    });\n  }\n}\n\n/**\n * Unknown requested user support.\n * Example: \"employee4\" should be detected even if AI/userFilter missed it.\n */\nconst requestText = String(req.originalRequest || req.rawText || '').toLowerCase();\n\nconst mentionedUserMatch = requestText.match(\n  /\\b(employee\\d+|intern\\d+|contractor\\d+|mlab-admin|mlabadmin)(?:'s|s)?\\b/i\n);\n\nconst mentionedUser = mentionedUserMatch ? mentionedUserMatch[1] : '';\n\nconst monitoredUsers = Object.keys(perUserCounts);\n\nconst focusedUser = req.userFilter || mentionedUser || '';\n\nconst requestedUserExists =\n  !focusedUser || monitoredUsers.includes(focusedUser);\n\nconst unknownRequestedUser =\n  focusedUser && !requestedUserExists ? focusedUser : '';\n\nlet focusedUserData = null;\n\nif (focusedUser && perUserCounts[focusedUser]) {\n  focusedUserData = {\n    user: focusedUser,\n    ...perUserCounts[focusedUser],\n    commands: userCommands[focusedUser]\n  };\n}\n\nconst compareUsers = Array.isArray(req.compareUsers) ? req.compareUsers : [];\n\nconst topRiskUsers = [...attentionUsers, ...warnings]\n  .sort((a, b) => Number(b.count || 0) - Number(a.count || 0))\n  .slice(0, 5);\n\nreturn [{\n  json: {\n    mode: req.mode || 'chat',\n    host: req.host || 'mlab-test',\n    chatId: req.chatId || '6925837675',\n    fromUser: req.fromUser || 'telegram-user',\n    originalRequest: req.originalRequest || req.rawText || 'Security report request',\n    rawText: req.rawText || req.originalRequest || '',\n    timeframe: req.timeframe || 'today',\n    requestType: req.requestType || 'general_report',\n    userFilter: focusedUser,\n    compareUsers,\n    attentionThreshold: threshold,\n\n    perUserCounts,\n    violationSummary: perUserCounts,\n    warnings,\n    attentionUsers,\n    totalPolicyViolations,\n    userCommands,\n\n    focusedUser,\n    focusedUserData,\n    monitoredUsers,\n    requestedUserExists,\n    unknownRequestedUser,\n\n    topRiskUsers,\n\n    alertNeeded: attentionUsers.length > 0,\n    shouldAlertByRule: attentionUsers.length > 0,\n    hasWarnings: warnings.length > 0,\n\n    rawLineCount: lines.length,\n    missingCollector: /script missing:/i.test(raw),\n    stderr\n  }\n}];"
+      },
+      "id": "253585c7-cc01-4f4e-a182-57f9d98e606d",
+      "name": "Build Chat Security Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{\n\"You are the AI Risk Analyst layer of an Ubuntu workplace-monitoring security guard.\\n\\n\" +\n\n\"Your job is not just to reformat logs. Your job is to help the administrator understand what happened, why it matters, and what to do next.\\n\\n\" +\n\n\"Use ONLY the provided JSON evidence. Do not invent users, counts, commands, incidents, malware, or compromise.\\n\" +\n\"Keep the answer concise and Telegram-friendly. Use plain English.\\n\\n\" +\n\n\"Important interpretation rules:\\n\" +\n\"- Critical users come only from attentionUsers.\\n\" +\n\"- Warning users come only from warnings.\\n\" +\n\"- Violation count must equal totalPolicyViolations.\\n\" +\n\"- Do not list users with 0 violations unless the administrator specifically asks for all users.\\n\" +\n\"- Repeated restricted-command attempts should be described as policy-warning activity unless stronger evidence proves compromise.\\n\" +\n\"- Do not expose raw field names such as status=NEEDS_ATTENTION, total_violations, or policy_warnings. Translate them into plain English.\\n\" +\n\"- If commands are repeated, summarize them. Example: apt install nmap repeated 5 times.\\n\\n\" +\n\n\"Specific-user rules:\\n\" +\n\"- If userFilter is not empty, focus the answer on that user.\\n\" +\n\"- Before reporting on a specific user, check requestedUserExists.\\n\" +\n\"- If requestedUserExists is false, say the requested user is not part of the monitored users in this lab.\\n\" +\n\"- If requestedUserExists is false, list monitoredUsers and ask the administrator to request one of those users.\\n\" +\n\"- If requestedUserExists is true and focusedUserData shows zero warnings/violations, say no warning-level activity was found for that user in the selected timeframe.\\n\" +\n\"- Do not create a fake report for an unknown user.\\n\\n\" +\n\n\"The administrator request was: \" + ($json.originalRequest || 'security report') + \"\\n\" +\n\"Request type: \" + ($json.requestType || 'general_report') + \"\\n\\n\" +\n\n\"Answer format:\\n\\n\" +\n\" AI Security Guard Report\\n\" +\n\"Host: <host>\\n\" +\n\"Timeframe: <timeframe>\\n\\n\" +\n\n\"Summary:\\n\" +\n\"<2 short sentences explaining the current security situation.>\\n\\n\" +\n\n\"Users needing admin review:\\n\" +\n\"- <critical user summary, or None>\\n\\n\" +\n\n\"Other warnings:\\n\" +\n\"- <warning user summary, or None>\\n\\n\" +\n\n\"Why this matters:\\n\" +\n\"<plain-English explanation of the risk or policy concern.>\\n\\n\" +\n\n\"Recommended next step:\\n\" +\n\"<one practical admin action.>\\n\\n\" +\n\n\"If the requested user is unknown, use this shorter format instead:\\n\\n\" +\n\" AI Security Guard Report\\n\" +\n\"Host: <host>\\n\" +\n\"Timeframe: <timeframe>\\n\\n\" +\n\"Summary:\\n\" +\n\"<requested user> is not part of the monitored users in this lab, so no activity report is available for that user.\\n\\n\" +\n\"Monitored users:\\n\" +\n\"<comma-separated monitoredUsers>\\n\\n\" +\n\"Recommended next step:\\n\" +\n\"Ask about one of the monitored users, for example: show warnings for employee2 today.\\n\\n\" +\n\n\"Evidence JSON:\\n\" +\nJSON.stringify({\n  host: $json.host,\n  timeframe: $json.timeframe,\n  originalRequest: $json.originalRequest,\n  requestType: $json.requestType,\n  userFilter: $json.userFilter,\n\n  monitoredUsers: Object.keys($json.perUserCounts || {}),\n  requestedUserExists: !$json.userFilter || Boolean(($json.perUserCounts || {})[$json.userFilter]),\n\n  totalPolicyViolations: $json.totalPolicyViolations,\n  attentionUsers: $json.attentionUsers || [],\n  warnings: $json.warnings || [],\n\n  focusedUser: $json.focusedUser || $json.userFilter || '',\n  focusedUserData: $json.focusedUserData || null,\n\n  topRiskUsers: $json.topRiskUsers || [],\n  perUserCounts: $json.perUserCounts || {},\n  userCommands: $json.userCommands || {},\n  stderr: $json.stderr || ''\n}, null, 2)\n}}",
+        "options": {
+          "systemMessage": "You are an evidence-based AI security analyst for a controlled Ubuntu workplace-monitoring lab.\n\nYour role is to act as the AI analysis layer, not the rule engine.\n\nRules:\n- Use only the JSON evidence provided in the user prompt.\n- Never invent users, counts, commands, events, malware, compromise, or attacker activity.\n- Explain the security meaning in plain English.\n- Critical users must come only from attentionUsers.\n- Warning users must come only from warnings.\n- Violation count must use totalPolicyViolations.\n- Do not list users with 0 violations unless the administrator specifically asks for all users.\n- Do not expose raw technical field names like status=NEEDS_ATTENTION, total_violations, policy_warnings, or shouldAlertByRule.\n- Treat repeated restricted-command attempts as policy-warning activity unless stronger evidence proves compromise.\n- Mention that policy warnings are not confirmed malware when relevant.\n- Keep output concise enough for Telegram.\n- Output plain text only.\n\nSpecific-user rule:\n- If the administrator asks about a specific user, first check whether that user exists in perUserCounts.\n- If the requested user is not present in perUserCounts, do not generate a normal security report.\n- Instead, explain that the requested user is not part of the monitored users in this lab and list the monitored users available in perUserCounts.\n- If the requested user exists but has no warnings or violations, say that no warning-level activity was found for that user in the selected timeframe.\n\nTone rules:\n- Avoid saying “potential security breach,” “malicious activity,” “attacker activity,” or “suspicious activity” when the only evidence is repeated restricted-command attempts.\n- Use safer wording such as “repeated policy-warning activity,” “restricted command attempts,” or “needs admin review.”"
+        }
+      },
+      "id": "ac3d78af-6807-4533-9d01-a5a74045e70b",
+      "name": "AI Risk Analyst",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        464,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $item(0).$node['Build Chat Security Context'].json.chatId || '6925837675' }}",
+        "text": "={{ $json.output || 'No AI security report was produced.' }}",
+        "additionalFields": {}
+      },
+      "id": "7b08983d-76a1-46ab-ac5e-cfa4b6317474",
+      "name": "Send AI Risk Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        816,
+        256
+      ],
+      "webhookId": "ai-security-guard-risk-report",
+      "credentials": {
+        "telegramApi": {
+          "id": "hZIUsjpPDHoxgKDp",
+          "name": "IPHONE TELEGRAM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama3.2:3b",
+        "options": {}
+      },
+      "id": "6727ae6e-5cc5-4ef7-8f49-8fcb1729a360",
+      "name": "Ollama Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        416,
+        1008
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "ibMFYHpeuhP4dtjd",
+          "name": "Ollama bruno"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.violationSummary }}",
+        "options": {
+          "systemMessage": "You are a careful security monitoring analyst for a controlled Ubuntu workplace-monitoring lab.\n\nYour job is to produce concise Telegram-ready security alerts from structured evidence.\n\nRules:\n- Output plain text only.\n- Keep it concise enough for Telegram.\n- Use only the provided evidence.\n- Do not invent missing facts.\n- Do not exaggerate.\n- Do not claim compromise, malware, or attacker activity unless the evidence clearly proves it.\n- Treat repeated restricted-command attempts as policy-warning activity unless stronger evidence is present.\n- Critical users are ONLY users listed in attentionUsers or users with status=NEEDS_ATTENTION or total_violations >= 5.\n- Warning users are users with policy_warnings > 0 or total_violations between 1 and 4.\n- Violation count must use totalPolicyViolations.\n- Users needing attention must list only attentionUsers, not all warning users.\n- If warning users exist below threshold, mention them under “What stood out,” not under “Users needing attention.”\n- Include command evidence when available from userCommands, warnings.commands, or attentionUsers.commands.\n- If no critical users exist, say “none” under Users needing attention.\n- Assessment must clearly say whether this is policy-warning activity or confirmed malicious activity.\n- End with one practical next step.\n\nUse this structure exactly:\n\n🚨 AI Security Guard Alert\nHost: <host>\nTimeframe: <timeframe>\nViolation count: <totalPolicyViolations>\n\nUsers needing attention:\n<attentionUsers as username (count violations), or none>\n\nWhat stood out:\n- <evidence line 1>\n- <evidence line 2>\n- <optional evidence line 3>\n\nAssessment:\n<one short sentence>\n\nRecommended action:\n<one short sentence>"
+        }
+      },
+      "id": "26cd075b-dbf7-4d6f-9036-e1ba12befc23",
+      "name": "AI Summarize Monitoring Alert",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        336,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{\n\"Interpret this Telegram administrator message and return only the required JSON trigger:\\n\\n\" +\nJSON.stringify($json, null, 2)\n}}",
+        "options": {
+          "systemMessage": "You are a hYou are the AI intent interpretation agent for an Ubuntu workplace security monitoring system.\n\nYour job is to read an administrator's Telegram message and convert it into a structured workflow trigger.\n\nYou do not execute commands.\nYou do not collect logs.\nYou do not decide final security severity.\nYou only interpret the user's request and select the correct predefined workflow path.\n\nUse the Observe–Think–Decide–Act model:\n- Observe: read the Telegram message.\n- Think: identify the administrator's intent, timeframe, target user, and requested report type.\n- Decide: choose the correct requestType.\n- Act: output a strict JSON trigger for n8n to validate and route.\n\nReturn strict JSON only.\nDo not use markdown fences.\nDo not explain your reasoning.\n\nSupported requestType values:\n- general_report\n- user_warnings\n- attention_users\n- explain_user\n- compare_users\n- normal_chat\n\nKnown users:\n- employee1\n- employee2\n- employee3\n- intern1\n- contractor1\n- mlab-admin\n- mlabadmin\n\nTimeframe rules:\n- Use \"today\" for today, now, current, this morning, this afternoon, this evening.\n- Use \"yesterday\" for yesterday or last night.\n- Use \"last N hours\" for messages like last 1 hour, past 2 hours.\n- Use \"N hour ago\" for messages like 1 hour ago.\n- Use \"last N days\" for messages like last 5 days, past 7 days.\n- Use \"N days ago\" for messages like 2 days ago.\n- Default to \"today\" if no timeframe is given.\n\nUser detection rules:\n- Detect user names even with possessive wording, such as employee2s or employee2's.\n- If one known user is mentioned, set userFilter to that user.\n- If two known users are mentioned in a comparison request, set compareUsers to both users.\n- If no known user is mentioned, set userFilter to an empty string.\n\nRequest type rules:\n- general_report: broad security report, summary, status, incidents, alerts, logs.\n- user_warnings: warnings or activity for one specific user.\n- explain_user: questions like why was employee2 flagged.\n- attention_users: who needs attention, who needs review, risky users.\n- compare_users: compare two users.\n- normal_chat: greeting, thanks, or unrelated message.\n\nOutput this exact JSON shape:\n{\n  \"mode\": \"chat\",\n  \"host\": \"mlab-test\",\n  \"timeframe\": \"today\",\n  \"requestType\": \"general_report\",\n  \"chatId\": \"\",\n  \"fromUser\": \"\",\n  \"originalRequest\": \"\",\n  \"rawText\": \"\",\n  \"userFilter\": \"\",\n  \"compareUsers\": [],\n  \"attentionThreshold\": 5,\n  \"isReportRequest\": true,\n  \"confidence\": 0.0\n}elpful assistant"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -784,
+        352
+      ],
+      "id": "66241eb9-e4a8-4bd3-bd00-21e45375a38e",
+      "name": "AI Security Intent Agent"
+    },
+    {
+      "parameters": {
+        "model": "groq/compound",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        576
+      ],
+      "id": "67a5b71b-38cf-468f-8330-932c16372429",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "JMlsuPlMD4U3a8te",
+          "name": "may 2 2026"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = String($json.output || $json.text || $json.message || '').trim();\n\nconst cleaned = raw\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```/, '')\n  .replace(/```$/, '')\n  .trim();\n\nlet parsed;\n\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  const match = cleaned.match(/\\{[\\s\\S]*\\}/);\n  if (!match) {\n    throw new Error('AI Intent Agent did not return valid JSON. Raw output: ' + raw);\n  }\n  parsed = JSON.parse(match[0]);\n}\n\nconst allowedTypes = [\n  'general_report',\n  'user_warnings',\n  'attention_users',\n  'explain_user',\n  'compare_users',\n  'normal_chat'\n];\n\nconst requestType = allowedTypes.includes(parsed.requestType)\n  ? parsed.requestType\n  : 'normal_chat';\n\nconst isReportRequest = requestType !== 'normal_chat';\n\nreturn [{\n  json: {\n    mode: 'chat',\n    host: parsed.host || 'mlab-test',\n    timeframe: parsed.timeframe || 'today',\n    requestType,\n    chatId: String(parsed.chatId || '6925837675'),\n    fromUser: parsed.fromUser || 'telegram-user',\n    originalRequest: parsed.originalRequest || parsed.rawText || '',\n    rawText: parsed.rawText || parsed.originalRequest || '',\n    userFilter: parsed.userFilter || '',\n    compareUsers: Array.isArray(parsed.compareUsers) ? parsed.compareUsers : [],\n    attentionThreshold: Number(parsed.attentionThreshold || 5),\n    isReportRequest,\n    confidence: Number(parsed.confidence || 0),\n    rawAiIntent: raw\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        352
+      ],
+      "id": "ec53b5b3-55a4-479e-89fb-24b4cc9137a5",
+      "name": "Parse AI Intent Output"
+    },
+    {
+      "parameters": {
+        "model": "groq/compound",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        544,
+        480
+      ],
+      "id": "46b38306-fe05-4e3d-b1f7-7187617692d7",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "JMlsuPlMD4U3a8te",
+          "name": "may 2 2026"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Scheduled Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Scheduled Request": {
+      "main": [
+        [
+          {
+            "node": "Collect Scheduled Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Scheduled Logs": {
+      "main": [
+        [
+          {
+            "node": "Parse Scheduled Security Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Scheduled Security Context": {
+      "main": [
+        [
+          {
+            "node": "If Scheduled Alert Needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Scheduled Alert Needed": {
+      "main": [
+        [
+          {
+            "node": "Build Scheduled Telegram Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Scheduled Telegram Alert": {
+      "main": [
+        [
+          {
+            "node": "AI Summarize Monitoring Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Security Intent Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Telegram Report Request": {
+      "main": [
+        [
+          {
+            "node": "Collect Chat Requested Logs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Help Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Chat Requested Logs": {
+      "main": [
+        [
+          {
+            "node": "Build Chat Security Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Chat Security Context": {
+      "main": [
+        [
+          {
+            "node": "AI Risk Analyst",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Risk Analyst": {
+      "main": [
+        [
+          {
+            "node": "Send AI Risk Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Summarize Monitoring Alert",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Summarize Monitoring Alert": {
+      "main": [
+        [
+          {
+            "node": "Send Scheduled Telegram Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Security Intent Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Intent Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Security Intent Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Intent Output": {
+      "main": [
+        [
+          {
+            "node": "If Telegram Report Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Risk Analyst",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d57c78a6-f5d7-453b-b20d-2d9199f8f6d5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "52ad1d4e37f17e847a67465695f24138ca2e4ce2b2d733327036740dee2ab0a0"
+  },
+  "id": "oY3Gm5L73ObufIba",
+  "tags": []
+}
