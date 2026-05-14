@@ -1,0 +1,2688 @@
+{
+  "updatedAt": "2026-05-10T03:03:50.000Z",
+  "createdAt": "2026-04-28T11:52:17.399Z",
+  "id": "ENI9yQ6IE7z9WsnF",
+  "name": "Admin Network Operations Bot 1",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "adm-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2592,
+        -48
+      ],
+      "webhookId": "08daede9-df5c-4047-993b-f350a11bc408",
+      "credentials": {
+        "telegramApi": {
+          "id": "60ctX1eeanLReMya",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.message.chat.id }}",
+              "type": "string"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.message.text || '' }}",
+              "type": "string"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $json.message.from.id }}",
+              "type": "string"
+            },
+            {
+              "name": "user_name",
+              "value": "={{ [$json.message.from?.first_name, $json.message.from?.last_name].filter(Boolean).join(' ') || $json.message.from?.username || 'Admin' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adm-prepare",
+      "name": "Prepare Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2352,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "options": {
+          "systemMessage": "=You are an administrator-facing AI assistant for a network case management and diagnostic system. Return only valid JSON. Supported actions: show_open_cases, show_cases_by_department, view_case, diagnose_case, update_status, resolve_case, create_vlan, delete_vlan, show_vlans, get_denied_logs, backup_router_config, help. Extract if present: case_id, employee_name, department, status, resolution, vlan_id, vlan_name, router_name, config_type. Important rules: show_vlans and get_denied_logs are direct read-only operations and must not depend on Google Sheets. create_vlan should execute directly without approval. Only delete_vlan requires approval. Output schema: {\"admin_action\":\"help\",\"case_id\":null,\"employee_name\":null,\"department\":null,\"status\":null,\"resolution\":null,\"vlan_id\":null,\"vlan_name\":null,\"router_name\":null,\"config_type\":null,\"reply_text\":null}"
+        }
+      },
+      "id": "adm-ai",
+      "name": "Admin AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        -1600,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "adm-gemini",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        656
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "pFiI5EC2sglkGTqS",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw = $json.output ?? $json;\nlet p;\ntry {\n  p = typeof raw === 'object' ? raw : JSON.parse(String(raw).replace(/```json|```/g, '').trim());\n} catch (e) {\n  p = {\n    admin_action: 'help',\n    case_id: null,\n    employee_name: null,\n    department: null,\n    status: null,\n    resolution: null,\n    vlan_id: null,\n    vlan_name: null,\n    router_name: null,\n    config_type: null,\n    reply_text: 'I can help with /show open cases, /show cases Finance, /view CASE-1777527657268, /diagnose Bruno Maseko, /update Bruno Maseko status In Progress, /resolve Bruno Maseko restored access, /show vlans, /get denied logs, /create vlan 80 Research, /delete vlan 80, or /backup R2.'\n  };\n}\n\nconst text = String($json.text || '').trim();\nconst actionAliases = {\n  'resolve': 'resolve_case',\n  'resolve case': 'resolve_case',\n  'update': 'update_status',\n  'update case': 'update_status',\n  'diagnose': 'diagnose_case',\n  'diagnose case': 'diagnose_case',\n  'view': 'view_case',\n  'view case': 'view_case',\n  'show open': 'show_open_cases',\n  'show open cases': 'show_open_cases',\n  'check cases': 'show_open_cases',\n  'check case': 'show_open_cases',\n  'show cases': 'show_cases_by_department'\n};\nconst normalizedActionKey = String(p.admin_action || '').trim().toLowerCase();\nif (actionAliases[normalizedActionKey]) p.admin_action = actionAliases[normalizedActionKey];\nif (!p.admin_action || p.admin_action === 'help') {\n  const lower = text.toLowerCase();\n  if (/^(?:\\/)?resolve\\b/.test(lower)) p.admin_action = 'resolve_case';\n  else if (/^(?:\\/)?update\\b/.test(lower)) p.admin_action = 'update_status';\n  else if (/^(?:\\/)?diagnose\\b/.test(lower)) p.admin_action = 'diagnose_case';\n  else if (/^(?:\\/)?view\\b/.test(lower)) p.admin_action = 'view_case';\n  else if (/^(?:\\/)?show\\s+open\\s+cases\\b/.test(lower) || /^(?:\\/)?check\\s+cases\\b/.test(lower)) p.admin_action = 'show_open_cases';\n  else if (/^(?:\\/)?show\\s+cases\\s+\\w+/.test(lower)) p.admin_action = 'show_cases_by_department';\n  else if (/^(?:\\/)?show\\s+vlans\\b/.test(lower)) p.admin_action = 'show_vlans';\n  else if (/^(?:\\/)?get\\s+denied\\s+logs\\b/.test(lower)) p.admin_action = 'get_denied_logs';\n  else if (/^(?:\\/)?create\\s+vlan\\b/.test(lower)) p.admin_action = 'create_vlan';\n  else if (/^(?:\\/)?delete\\s+vlan\\b/.test(lower)) p.admin_action = 'delete_vlan';\n  else if (/^(?:\\/)?backup\\b/.test(lower)) p.admin_action = 'backup_router_config';\n}\n\nconst caseMatch = text.match(/\\b(CASE-\\d{6,})\\b/i) || text.match(/\\b(\\d{10,})\\b/);\nif (caseMatch) {\n  const extracted = String(caseMatch[1]).toUpperCase();\n  p.case_id = extracted.startsWith('CASE-') ? extracted : `CASE-${extracted}`;\n}\n\nif (p.admin_action === 'update_status') {\n  const updateMatch = text.match(/\\bstatus\\s+(.+)$/i);\n  if (updateMatch) p.status = updateMatch[1].trim();\n  if (!p.case_id) {\n    const nameMatch = text.match(/^\\s*(?:\\/)?update\\s+(.+?)\\s+status\\s+.+$/i);\n    if (nameMatch) {\n      let candidate = nameMatch[1].trim();\n      candidate = candidate.replace(/^case\\s+/i, '').replace(/^employee\\s+/i, '').trim();\n      if (candidate) p.employee_name = candidate;\n    }\n  }\n}\n\nif (p.admin_action === 'diagnose_case' && !p.case_id) {\n  const diagNameMatch = text.match(/^\\s*(?:\\/)?diagnose(?:\\s+case)?\\s+(.+)$/i);\n  if (diagNameMatch) {\n    let candidate = diagNameMatch[1].trim();\n    candidate = candidate.replace(/^case\\s+/i, '').replace(/^employee\\s+/i, '').trim();\n    if (candidate) p.employee_name = candidate;\n  }\n}\n\nif (p.admin_action === 'resolve_case') {\n  const resolveWithCase = text.match(/\\bresolve\\s+(?:CASE-\\d+|\\d+)\\s+(.+)$/i);\n  const resolveByName = text.match(/^\\s*(?:\\/)?resolve\\s+(.+?)\\s+(.+)$/i);\n  if (resolveWithCase) {\n    p.resolution = resolveWithCase[1].trim();\n  } else if (resolveByName) {\n    let candidate = resolveByName[1].trim();\n    candidate = candidate.replace(/^case\\s+/i, '').replace(/^employee\\s+/i, '').trim();\n    if (!p.case_id && candidate) p.employee_name = candidate;\n    if (!p.resolution) p.resolution = resolveByName[2].trim();\n  }\n}\n\nconst backupMatch = text.match(/backup(?:\\s+router)?\\s+(R\\d+)(?:\\s+(running|startup|both))?/i);\nif (backupMatch) {\n  p.router_name = backupMatch[1].toUpperCase();\n  p.config_type = (backupMatch[2] || 'both').toLowerCase();\n}\n\nreturn { json: { ...$json, ...p } };"
+      },
+      "id": "adm-parse",
+      "name": "Parse Admin JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.admin_action }}",
+                    "rightValue": "show_vlans",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b5b0e1cb-5e67-4c6f-84d8-961779236d41"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "show_vlans_direct"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.admin_action }}",
+                    "rightValue": "get_denied_logs",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c388568d-ba8a-4fd0-a50b-e06b83af2366"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "denied_logs_direct"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.admin_action }}",
+                    "rightValue": "create_vlan",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "df11a2e1-b272-4091-889a-39f046371124"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "create_vlan_direct"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.admin_action }}",
+                    "rightValue": "delete_vlan",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "bff4a6c3-5016-4e60-81a1-e2eb211d2034"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "delete_vlan_needs_approval"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ ['show_open_cases','show_cases_by_department','view_case','diagnose_case','update_status','resolve_case'].includes($json.admin_action) }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "id": "07912ef0-f3ad-4976-b7e6-e78dfd863f3a"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "case_actions"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.admin_action }}",
+                    "rightValue": "backup_router_config",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "fd158867-b847-4e0b-91ef-f07c7d4a7018"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "backup_router_config"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cb877b3f-5ce9-433b-8cea-10afe6b2e0e2",
+                    "leftValue": "={{\n  ['help', 'general_chat', 'unknown', 'fallback'].includes(\n    String($json.admin_action || '').trim().toLowerCase()\n  )\n}}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "general_chat"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adm-gate",
+      "name": "Direct Admin Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1120,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "uVshAee3ci1aNRqT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/uVshAee3ci1aNRqT",
+          "cachedResultName": "show_vlans_workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "adm-show-vlans",
+      "name": "Execute Show VLANs Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -880,
+        -272
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Prepare Message\"].json[\"chat_id\"] }}",
+        "text": "={{ $json.reply_text }}",
+        "additionalFields": {}
+      },
+      "id": "adm-reply-show-vlans",
+      "name": "Reply Show VLANs",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -432,
+        -288
+      ],
+      "webhookId": "afdeef7e-2478-46a9-9bf4-bd9afb98ee8a",
+      "credentials": {
+        "telegramApi": {
+          "id": "60ctX1eeanLReMya",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "w0Jzr6tJyLDxU8pv",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/w0Jzr6tJyLDxU8pv",
+          "cachedResultName": "get_firewall_logs_users"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "adm-denied-logs",
+      "name": "Execute Denied Logs Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -880,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Prepare Message\"].json[\"chat_id\"] }}",
+        "text": "={{ Array.isArray($json.logs) && $json.logs.length ? 'Denied Traffic Logs\\n\\n' + $json.logs.map(l => `${l.user} \u2192 ${l.destination} \u2192 ${l.status}`).join('\\n') : `Denied Traffic Logs\\n\\n${JSON.stringify($json, null, 2)}` }}",
+        "additionalFields": {}
+      },
+      "id": "adm-reply-denied",
+      "name": "Reply Denied Logs",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        -96
+      ],
+      "webhookId": "3f227e7b-5925-48f3-97ff-9402756a89dc",
+      "credentials": {
+        "telegramApi": {
+          "id": "60ctX1eeanLReMya",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UL5YcnaaGlLN4Bbx",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UL5YcnaaGlLN4Bbx",
+          "cachedResultName": "vlans"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "action": "create",
+            "vlan_id": "={{ String($json.vlan_id) }}",
+            "vlan_name": "={{ $json.vlan_name || ('VLAN_' + String($json.vlan_id)) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "action",
+              "displayName": "action",
+              "type": "string"
+            },
+            {
+              "id": "vlan_id",
+              "displayName": "vlan_id",
+              "type": "string"
+            },
+            {
+              "id": "vlan_name",
+              "displayName": "vlan_name",
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "adm-create-vlan",
+      "name": "Execute Create VLAN Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -880,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Prepare Message\"].json[\"chat_id\"] }}",
+        "text": "={{ `VLAN Operation Successful\nAction: ${$json.action || 'create'}\nVLAN: ${$json.vlan_id || ''}\nMessage: ${$json.message || $json.status || 'Completed.'}` }}",
+        "additionalFields": {}
+      },
+      "id": "adm-reply-create-vlan",
+      "name": "Reply Create VLAN Result",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -432,
+        16
+      ],
+      "webhookId": "468123af-91f8-4e8b-8364-ef0d46b544cd",
+      "credentials": {
+        "telegramApi": {
+          "id": "60ctX1eeanLReMya",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "HRyX94a7jRnAVlzi",
+          "mode": "list",
+          "cachedResultName": "admin_actions",
+          "cachedResultUrl": "/projects/Cn6cqZj3eh81Llze/datatables/HRyX94a7jRnAVlzi"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "action_id": "={{ 'ACT-' + Date.now() }}",
+            "admin_name": "={{ $node[\"Prepare Message\"].json[\"user_name\"] || $node[\"Prepare Message\"].json[\"user_id\"] }}",
+            "action_type": "delete_vlan",
+            "action_summary": "={{ 'Delete VLAN ' + ($json.vlan_id || $node[\"Parse Admin JSON\"].json[\"vlan_id\"] || 'UNKNOWN') }}",
+            "approval_status": "Pending",
+            "created_at": "={{ new Date().toISOString() }}",
+            "vlan_id": "={{ $json.vlan_id || $node[\"Parse Admin JSON\"].json[\"vlan_id\"] || \"\" }}",
+            "vlan_name": "={{ $json.vlan_name || \"\" }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "action_id",
+              "displayName": "action_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "admin_name",
+              "displayName": "admin_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "case_id",
+              "displayName": "case_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "action_type",
+              "displayName": "action_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "action_summary",
+              "displayName": "action_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "approval_status",
+              "displayName": "approval_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "vlan_id",
+              "displayName": "vlan_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "vlan_name",
+              "displayName": "vlan_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "adm-append-action",
+      "name": "Append Pending Delete Action",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Prepare Message\"].json[\"chat_id\"] }}",
+        "text": "={{\n`\u26a0\ufe0f Delete VLAN Approval Required\n\nYou are about to delete VLAN ${$node[\"Prepare Pending Delete Row\"].json[\"vlan_id\"]}.\n\nWarning:\nDeleting a VLAN may disconnect devices assigned to that VLAN.\n\nReply with:\n\u2705 YES - continue with deletion\n\u274c NO - cancel deletion`\n}}",
+        "additionalFields": {}
+      },
+      "id": "adm-reply-pending",
+      "name": "Reply Pending Delete Approval",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -144,
+        224
+      ],
+      "webhookId": "d3f751de-8031-444e-9872-f2803da7cdfb",
+      "credentials": {
+        "telegramApi": {
+          "id": "60ctX1eeanLReMya",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst approved = input.approval_decision === 'approved';\n\nreturn [\n  {\n    json: {\n      ...input,\n      reply_text: approved\n        ? `\u2705 Approved. Proceeding to delete VLAN ${input.pending_vlan_id}.`\n        : `\u274c Cancelled. VLAN ${input.pending_vlan_id} will not be deleted.`\n    }\n  }\n];"
+      },
+      "id": "adm-resolve-approval",
+      "name": "Resolve Approval Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1504,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "HRyX94a7jRnAVlzi",
+          "cachedResultName": "admin_actions",
+          "cachedResultUrl": "/projects/Cn6cqZj3eh81Llze/datatables/HRyX94a7jRnAVlzi"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "action_id",
+              "keyValue": "={{ $json.pending_action_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "action_id": "={{ $json.pending_action_id }}",
+            "approval_status": "={{ $json.approval_decision === \"approved\" ? \"Approved\" : \"Rejected\" }}",
+            "action_summary": "={{ \"Delete VLAN \" + ($json.pending_vlan_id || \"UNKNOWN\") }}",
+            "admin_name": "={{ $json.user_name || $json.user_id || \"\" }}",
+            "case_id": "={{ $json.case_id || \"\" }}",
+            "action_type": "={{ $json.pending_action_type || \"delete_vlan\" }}",
+            "created_at": "={{ $json.pending_action?.created_at || new Date().toISOString() }}",
+            "vlan_id": "={{ $json.pending_vlan_id || \"\" }}",
+            "vlan_name": "={{ $json.pending_vlan_name || \"\" }}"
+          },
+          "matchingColumns": [
+            "action_id"
+          ],
+          "schema": [
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "action_id",
+              "displayName": "action_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "admin_name",
+              "displayName": "admin_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "case_id",
+              "displayName": "case_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "action_type",
+              "displayName": "action_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "action_summary",
+              "displayName": "action_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "approval_status",
+              "displayName": "approval_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "vlan_id",
+              "displayName": "vlan_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "vlan_name",
+              "displayName": "vlan_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "dryRun": false
+        }
+      },
+      "id": "adm-update-action-status",
+      "name": "Update Admin Action Status",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        -1552,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.approval_status }}",
+              "rightValue": "Approved",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "id": "8495ef3b-9404-4287-ab51-3dea1f62b02c"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "adm-approved",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1248,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UL5YcnaaGlLN4Bbx",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UL5YcnaaGlLN4Bbx",
+          "cachedResultName": "vlans"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "action": "delete",
+            "vlan_id": "={{ String($json.vlan_id) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "vlan_id",
+              "displayName": "vlan_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "vlan_name",
+              "displayName": "vlan_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "adm-execute-delete",
+      "name": "Execute Approved Delete VLAN Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -1248,
+        -496
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Prepare Message\"].json[\"chat_id\"] }}",
+        "text": "={{ `VLAN Operation Successful\nAction: delete\nVLAN: ${$json.vlan_id || ''}\nMessage: ${$json.message || $json.status || 'Completed.'}` }}",
+        "additionalFields": {}
+      },
+      "id": "adm-reply-delete",
+      "name": "Reply Delete VLAN Result",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1040,
+        -672
+      ],
+      "webhookId": "16371ee4-fad6-48bb-a68a-e78f31139bd5",
+      "credentials": {
+        "telegramApi": {
+          "id": "60ctX1eeanLReMya",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Prepare Message\"].json[\"chat_id\"] }}",
+        "text": "={{\n`\u274c Cancelled.\n\nVLAN ${$json.vlan_id} will not be deleted.`\n}}",
+        "additionalFields": {}
+      },
+      "id": "adm-reply-approval",
+      "name": "Reply Approval Outcome",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1024,
+        -464
+      ],
+      "webhookId": "7ac36b80-598b-4a30-9587-66bf31b13396",
+      "credentials": {
+        "telegramApi": {
+          "id": "60ctX1eeanLReMya",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "ejijSMrtn7IihPd7",
+          "cachedResultName": "cases",
+          "cachedResultUrl": "/projects/Cn6cqZj3eh81Llze/datatables/ejijSMrtn7IihPd7"
+        },
+        "filters": {
+          "conditions": []
+        },
+        "returnAll": true
+      },
+      "id": "adm-read-cases",
+      "name": "Read Cases",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.admin_action }}",
+                    "rightValue": "show_open_cases",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "9442f02d-de0b-433b-b769-cbd971d5757a"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "show_open"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.admin_action }}",
+                    "rightValue": "show_cases_by_department",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "458efe12-c90a-476d-a331-f089a53a857e"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "show_dept"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.admin_action }}",
+                    "rightValue": "view_case",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "f5f0846b-cfac-4fd5-ae6d-653d4f6e2893"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "view_case"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.admin_action }}",
+                    "rightValue": "diagnose_case",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "1d5d68fc-8a65-4770-97ec-a135fd45af66"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "diagnose"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.admin_action }}",
+                    "rightValue": "update_status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "4caf5c92-0e3d-4ec6-9078-2c2d1352a7db"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "update_status"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.admin_action }}",
+                    "rightValue": "resolve_case",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "64109f28-a351-4383-a6a8-077cbdeebe6a"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "resolve_case"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adm-route-cases",
+      "name": "Route Case Actions",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -784,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items=$input.all(); const first=items[0]?.json||{}; const rows=items.map(i=>i.json).filter(r=>String(r.status||'').toLowerCase()==='open'); const chat_id=first.chat_id||''; const lines=rows.slice(0,20).map((r,i)=>`${i+1}. ${r.employee_name || 'Unknown Employee'}\nCase ID: ${r.case_id}\nDepartment: ${r.department}\nService: ${r.service_requested || r.service || ''}\nIssue: ${r.issue_description || r.description || ''}\nStatus: ${r.status}`); return [{json:{chat_id,reply:rows.length?`Open Cases:\n\n${lines.join('\\n\\n')}`:'No open cases found.'}}];"
+      },
+      "id": "adm-format-open",
+      "name": "Format Open Cases",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items=$input.all(); const first=items[0]?.json||{}; const dept=String(first.requested_department||'').toLowerCase(); const chat_id=first.chat_id||''; const deptLabel=first.requested_department||''; const rows=items.map(i=>i.json).filter(r=>String(r.department||'').toLowerCase()===dept); const lines=rows.slice(0,20).map((r,i)=>`${i+1}. ${r.employee_name || 'Unknown Employee'}\nCase ID: ${r.case_id}\nService: ${r.service_requested || r.service || ''}\nStatus: ${r.status}`); return [{json:{chat_id,reply:rows.length?`${deptLabel} Department Cases:\n\n${lines.join('\\n\\n')}`:`No cases found for department ${deptLabel}.`}}];"
+      },
+      "id": "adm-format-dept",
+      "name": "Format Department Cases",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items=$input.all(); const first=items[0]?.json||{}; const reqCaseId=first.requested_case_id; const chat_id=first.chat_id||''; const row=items.map(i=>i.json).find(r=>r.case_id===reqCaseId); return [{json:{chat_id,reply:row?`Case Details\n\nCase ID: ${row.case_id}\nEmployee: ${row.employee_name}\nEmployee ID: ${row.employee_id}\nDepartment: ${row.department}\nEmail: ${row.email}\nService/System: ${row.service_requested || row.service || ''}\nIssue Type: ${row.issue_type}\nStatus: ${row.status}\nPriority: ${row.priority || ''}\n\nDescription:\n${row.issue_description || row.description || ''}\n\nCreated At:\n${row.created_at}`:`Case ${reqCaseId} was not found.`}}];"
+      },
+      "id": "adm-format-view",
+      "name": "Format Case View",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items=$input.all(); const first=items[0]?.json||{}; const reqCaseId=first.requested_case_id; const chat_id=first.chat_id||''; const row=items.map(i=>i.json).find(r=>r.case_id===reqCaseId); if(!row) return [{json:{chat_id,reply:`Case ${reqCaseId} was not found.`}}]; const service=row.service_requested||row.service||'the affected service'; const plan=[`1. Check reachability related to ${service}.`,'2. Check VLAN assignment for affected endpoints.','3. Check inter-VLAN routing and router subinterfaces.','4. Check ACLs and firewall rules.','5. Summarize likely cause and recommended action.'].join('\\n'); return [{json:{...row,chat_id,reply:`Diagnostic Plan for ${row.case_id}\\n\\n${plan}\\n\\nNo network changes will be applied automatically.`,log_id:`DLOG-${Date.now()}`,command_type:'diagnostic_plan',command_output:plan,result:'planned',summary:'Initial AI diagnostic plan generated.',created_at:new Date().toISOString()}}];"
+      },
+      "id": "adm-diag-plan",
+      "name": "Create Diagnostic Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "9RWaXgIgUn9ZgzJp",
+          "cachedResultName": "diagnostic_logs",
+          "cachedResultUrl": "/projects/Cn6cqZj3eh81Llze/datatables/9RWaXgIgUn9ZgzJp"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $json.log_id }}",
+            "case_id": "={{ $json.case_id }}",
+            "command_type": "={{ $json.command_type }}",
+            "command_output": "={{ $json.command_output }}",
+            "result": "={{ $json.result }}",
+            "summary": "={{ $json.summary }}",
+            "created_at": "={{ $json.created_at }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "case_id",
+              "displayName": "case_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "command_type",
+              "displayName": "command_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "command_output",
+              "displayName": "command_output",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "result",
+              "displayName": "result",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adm-append-diag",
+      "name": "Append Diagnostic Log",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        752
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "ejijSMrtn7IihPd7",
+          "cachedResultName": "cases",
+          "cachedResultUrl": "/projects/Cn6cqZj3eh81Llze/datatables/ejijSMrtn7IihPd7"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "case_id",
+              "keyValue": "={{ (() => { const v = String($json.requested_case_id || \"\").trim().toUpperCase(); return v && !v.startsWith(\"CASE-\") ? `CASE-${v}` : v; })() }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "case_id": "={{ (() => { const v = String($json.requested_case_id || \"\").trim().toUpperCase(); return v && !v.startsWith(\"CASE-\") ? `CASE-${v}` : v; })() }}",
+            "status": "={{ String($json.requested_status || \"\").trim() }}",
+            "updated_at": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": [
+            "case_id"
+          ],
+          "schema": [
+            {
+              "id": "case_id",
+              "displayName": "case_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "employee_name",
+              "displayName": "employee_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "employee_id",
+              "displayName": "employee_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "department",
+              "displayName": "department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "service",
+              "displayName": "service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "issue_type",
+              "displayName": "issue_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "description",
+              "displayName": "description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "resolution",
+              "displayName": "resolution",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "service_requested",
+              "displayName": "service_requested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "issue_description",
+              "displayName": "issue_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "assigned_to",
+              "displayName": "assigned_to",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "adm-update-status",
+      "name": "Update Case Status",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        960
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id || $node[\"Prepare Message\"].json[\"chat_id\"] }}",
+        "text": "={{ `Case ${$json.case_id || $json.requested_case_id} has been updated.\n\nNew Status: ${$json.status || $json.requested_status}` + ($json.requested_employee_name ? `\nEmployee: ${$json.requested_employee_name}` : ``) }}",
+        "additionalFields": {}
+      },
+      "id": "adm-reply-status",
+      "name": "Reply Status Updated",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -160,
+        912
+      ],
+      "webhookId": "03ddaa70-99b7-4a58-a22a-adaad24cf064",
+      "credentials": {
+        "telegramApi": {
+          "id": "60ctX1eeanLReMya",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "ejijSMrtn7IihPd7",
+          "cachedResultName": "cases",
+          "cachedResultUrl": "/projects/Cn6cqZj3eh81Llze/datatables/ejijSMrtn7IihPd7"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "case_id",
+              "keyValue": "={{ (() => { const v = String($json.requested_case_id || \"\").trim().toUpperCase(); return v && !v.startsWith(\"CASE-\") ? `CASE-${v}` : v; })() }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "case_id": "={{ (() => { const v = String($json.requested_case_id || \"\").trim().toUpperCase(); return v && !v.startsWith(\"CASE-\") ? `CASE-${v}` : v; })() }}",
+            "status": "Resolved",
+            "resolution": "={{ $json.requested_resolution }}",
+            "updated_at": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": [
+            "case_id"
+          ],
+          "schema": [
+            {
+              "id": "case_id",
+              "displayName": "case_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "employee_name",
+              "displayName": "employee_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "employee_id",
+              "displayName": "employee_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "department",
+              "displayName": "department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "service_requested",
+              "displayName": "service_requested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "issue_type",
+              "displayName": "issue_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "issue_description",
+              "displayName": "issue_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resolution",
+              "displayName": "resolution",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "assigned_to",
+              "displayName": "assigned_to",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adm-resolve-case",
+      "name": "Resolve Case",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        1104
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "ejijSMrtn7IihPd7",
+          "cachedResultName": "cases",
+          "cachedResultUrl": "/projects/Cn6cqZj3eh81Llze/datatables/ejijSMrtn7IihPd7"
+        },
+        "filters": {
+          "conditions": []
+        },
+        "returnAll": true
+      },
+      "id": "adm-reload-cases",
+      "name": "Reload Cases After Resolve",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst ctx = $items('Attach Case Context', 0, 0)[0]?.json || $items('Resolve Case', 0, 0)[0]?.json || {};\nconst resolveRow = $items('Resolve Case', 0, 0)[0]?.json || {};\nconst rawCaseId = String(ctx.requested_case_id || resolveRow.case_id || ctx.case_id || '').trim().toUpperCase();\nconst caseId = rawCaseId && !rawCaseId.startsWith('CASE-') ? `CASE-${rawCaseId}` : rawCaseId;\nconst row = items.map(i => i.json).find(r => String(r.case_id || '').trim().toUpperCase() === caseId) || resolveRow;\nreturn [{\n  json: {\n    ...row,\n    ...ctx,\n    case_id: caseId || row?.case_id || '',\n    employee_email: row?.email || ctx?.email || '',\n    employee_name: row?.employee_name || ctx?.employee_name || 'User',\n    issue_description: row?.issue_description || row?.description || ctx?.issue_description || ctx?.description || '',\n    service_requested: row?.service_requested || row?.service || ctx?.service_requested || ctx?.service || '',\n    resolution: ctx?.requested_resolution || ctx?.resolution || row?.resolution || ''\n  }\n}];"
+      },
+      "id": "adm-prep-email",
+      "name": "Prepare Resolution Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.employee_email }}",
+        "subject": "={{ `Network Case Resolution - ${$json.case_id}` }}",
+        "message": "={{ `<p>Dear ${$json.employee_name},</p><p>Your network issue case <strong>${$json.case_id}</strong> has been resolved.</p><p><strong>Reported Issue:</strong><br/>${$json.issue_description}</p><p><strong>Investigation Result / Resolution:</strong><br/>${$json.resolution}</p><p><strong>Final Status:</strong><br/>Resolved</p><p>Thank you,<br/>Network Support Team</p>` }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "adm-send-email",
+      "name": "Send Resolution Email",
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        320,
+        1040
+      ],
+      "webhookId": "9bfeb47a-c7a2-4a1d-991d-8adc8c8ddffc",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "QkvXtSvzhpHBMobm",
+          "name": "Gmail account 6"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Prepare Message\"].json[\"chat_id\"] }}",
+        "text": "={{ `Case ${$node[\"Prepare Resolution Email\"].json[\"case_id\"]} has been resolved.\n\nEmployee: ${$node[\"Prepare Resolution Email\"].json[\"employee_name\"] || \"User\"}\nEmail sent to: ${$node[\"Prepare Resolution Email\"].json[\"employee_email\"] || \"the employee\"}\nResolution: ${$node[\"Prepare Resolution Email\"].json[\"resolution\"] || \"Completed\"}` }}",
+        "additionalFields": {}
+      },
+      "id": "adm-reply-resolve",
+      "name": "Reply Resolve Success",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        1040
+      ],
+      "webhookId": "9e154ce6-bd6b-474c-b57a-78b20b088936",
+      "credentials": {
+        "telegramApi": {
+          "id": "60ctX1eeanLReMya",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Prepare Message\"].json[\"chat_id\"] }}",
+        "text": "={{ $json.reply || $json.reply_text || 'Done.' }}",
+        "additionalFields": {}
+      },
+      "id": "adm-reply-generic",
+      "name": "Reply Admin Generic",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -160,
+        560
+      ],
+      "webhookId": "e70fca40-d50e-403a-8f2d-d49b180476de",
+      "credentials": {
+        "telegramApi": {
+          "id": "60ctX1eeanLReMya",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -1792,
+        288
+      ],
+      "id": "e0cd8af3-5b0c-4af2-b1d3-1d6545ed02fe",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "87pCbwUzHTqpFDrg",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\nconst req = $items('Parse Admin JSON', 0, 0)[0]?.json || {};\nconst msg = $items('Prepare Message', 0, 0)[0]?.json || {};\nconst rawCaseId = String(req.case_id || '').trim().toUpperCase();\nconst normalizedCaseId = rawCaseId && !rawCaseId.startsWith('CASE-') ? `CASE-${rawCaseId}` : rawCaseId;\nconst requestedEmployeeName = String(req.employee_name || '').trim();\nlet resolvedCaseId = normalizedCaseId;\nif (!resolvedCaseId && requestedEmployeeName) {\n  const needle = requestedEmployeeName.toLowerCase();\n  const candidates = rows.filter(r => String(r.employee_name || '').trim().toLowerCase() === needle);\n  const fuzzy = candidates.length ? candidates : rows.filter(r => String(r.employee_name || '').trim().toLowerCase().includes(needle) || needle.includes(String(r.employee_name || '').trim().toLowerCase()));\n  const ordered = [...fuzzy].sort((a,b) => {\n    const ao = String(a.status || '').toLowerCase() === 'open' ? 0 : 1;\n    const bo = String(b.status || '').toLowerCase() === 'open' ? 0 : 1;\n    if (ao !== bo) return ao - bo;\n    return String(b.created_at || '').localeCompare(String(a.created_at || ''));\n  });\n  if (ordered[0]?.case_id) resolvedCaseId = String(ordered[0].case_id).trim().toUpperCase();\n}\nconst base = {\n  admin_action: String(req.admin_action || '').trim(),\n  requested_case_id: resolvedCaseId,\n  requested_employee_name: requestedEmployeeName,\n  requested_department: req.department || '',\n  requested_status: req.status || '',\n  requested_resolution: req.resolution || '',\n  chat_id: msg.chat_id || req.chat_id || ''\n};\nif (['update_status','resolve_case'].includes(base.admin_action)) {\n  return [{ json: base }];\n}\nif (!rows.length) return [{ json: base }];\nreturn rows.map(r => ({ json: { ...r, ...base } }));"
+      },
+      "id": "adm-attach-case-context",
+      "name": "Attach Case Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama3.2:3b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -1600,
+        368
+      ],
+      "id": "02916242-8f30-496b-9bab-21b45124f7d4",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "MMvmBj7kbeiybMTZ",
+          "name": "Proxmox Dube Ollama"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.text }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1376,
+        352
+      ],
+      "id": "7dcbd441-3813-4e1e-9c20-f55dea56babc",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Prepare Message\"].json[\"chat_id\"] }}",
+        "text": "={{\n`\ud83d\udc4b Hello! I can help you manage network cases, VLANs, and router backups.\n\n\ud83d\udccc What I can do:\n\n\ud83d\udcc2 Case Management\n\u2022 Show open cases\n\u2022 Show cases by department\n\u2022 View a case\n\u2022 Diagnose a case\n\u2022 Update case status\n\u2022 Resolve a case\n\n\ud83c\udf10 VLAN Management\n\u2022 Show VLANs\n\u2022 Create VLAN\n\u2022 Delete VLAN\n\n\ud83d\uddc4\ufe0f Router Backups\n\u2022 Backup router configs\n\n\n\ud83d\udeab Logs\n\u2022 Get denied logs\n\n\ud83d\udcac Try saying:\n\"show open cases\"\n\"show VLANs\"\n\"backup R2\"\n\"backup R2 running\"\n\nHow can I assist you today?`\n}}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1152,
+        576
+      ],
+      "id": "f0c39201-0a60-45ce-bee9-72e905c07c3d",
+      "name": "General chat",
+      "webhookId": "6eff6c8c-f97c-471e-b1bb-02ba7221153a",
+      "credentials": {
+        "telegramApi": {
+          "id": "60ctX1eeanLReMya",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "HRyX94a7jRnAVlzi",
+          "cachedResultName": "admin_actions",
+          "cachedResultUrl": "/projects/Cn6cqZj3eh81Llze/datatables/HRyX94a7jRnAVlzi"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=chat_id",
+              "keyValue": "={{ $node[\"Prepare Message\"].json[\"chat_id\"] }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "id": "ac84e9e7-5fcb-4fd3-a5ab-be6f61801bff",
+      "name": "Read Admin Actions1",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        -2144,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepare = $('Prepare Message').first().json;\n\nconst text = String(\n  prepare.text ||\n  prepare.message_text ||\n  prepare.original_text ||\n  prepare.raw_text ||\n  ''\n).trim();\n\nconst normalized = text.toUpperCase();\n\nconst rows = $input.all().map(item => item.json);\n\nconst pending = rows.find(row =>\n  String(row.approval_status || '').toLowerCase() === 'pending' &&\n  String(row.action_type || '').toLowerCase() === 'delete_vlan'\n) || {};\n\nconst hasPendingDelete = !!pending.action_id;\n\nconst isApprove = ['YES', 'Y'].includes(normalized);\nconst isReject = ['NO', 'N', 'CANCEL', 'STOP'].includes(normalized);\nconst isApprovalWord = isApprove || isReject;\n\nlet approvalDecision = null;\n\nif (isApprove) approvalDecision = 'approved';\nif (isReject) approvalDecision = 'rejected';\n\nlet route = 'normal_command';\n\nif (hasPendingDelete && isApprovalWord) {\n  route = 'approval_reply';\n} else if (hasPendingDelete && !isApprovalWord) {\n  route = 'pending_block';\n} else if (!hasPendingDelete && isApprovalWord) {\n  route = 'orphan_approval';\n}\n\nreturn [\n  {\n    json: {\n      ...prepare,\n\n      route,\n\n      has_pending_delete: hasPendingDelete,\n      is_approval_reply: isApprovalWord,\n      approval_decision: approvalDecision,\n\n      pending_action_id: pending.action_id || null,\n      pending_action_type: pending.action_type || null,\n      pending_vlan_id: pending.vlan_id || null,\n      pending_vlan_name: pending.vlan_name || null,\n      pending_status: pending.approval_status || null,\n      pending_requested_at: pending.created_at || pending.createdAt || null\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1936,
+        -48
+      ],
+      "id": "5f700c96-41dd-4bc9-98c4-26da905b8cca",
+      "name": "Detect Delete Approval Reply"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "approval_reply",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "bca674d1-79a0-4bf0-85f7-7afec79246cc"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "approval_reply"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "07929fcd-c0e6-4ca8-9843-7380b955802f",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "pending_block",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pending_block"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "10185754-4f7b-483b-ba3f-71a6b717852c",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "orphan_approval",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "orphan_approval"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "973d611f-7c8d-4a1a-8ca7-941c7ed22af0",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "normal_command",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "normal_command"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        -1920,
+        -368
+      ],
+      "id": "a2739fd5-f730-45ec-a6b8-76d5d8a4d4a3",
+      "name": "Route Pending Approval"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Prepare Message\"].json[\"chat_id\"] }}",
+        "text": "={{\n`\u26a0\ufe0f You have a pending approval waiting.\n\nPending action:\n\ud83d\uddd1 Delete VLAN ${$json.pending_vlan_id}\n\nPlease reply with:\n\u2705 YES - approve deletion\n\u274c NO - cancel deletion\n\nAfter that, you can send another command.`\n}}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1456,
+        -832
+      ],
+      "id": "ccea14bf-9be0-45c7-8432-66abaf8d416c",
+      "name": "Reply Pending Action First",
+      "webhookId": "ad263c5d-875a-4488-a677-b6cb62d3ac98",
+      "credentials": {
+        "telegramApi": {
+          "id": "60ctX1eeanLReMya",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Prepare Message\"].json[\"chat_id\"] }}",
+        "text": "={{ `\u26a0\ufe0f There is no pending delete action waiting for approval.  Please send a delete command first, for example: \"delete VLAN 133\"  Then I will ask you to confirm with YES or NO.` }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1472,
+        -640
+      ],
+      "id": "ac7fda19-e5f5-473c-9a91-bf107c6de782",
+      "name": "Send a text message",
+      "webhookId": "71e5dcdb-3f50-46af-a80b-39c53ccda3a6",
+      "credentials": {
+        "telegramApi": {
+          "id": "60ctX1eeanLReMya",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const current = $input.first().json;\n\nconst parsed = $('Parse Admin JSON').first().json;\nconst prepared = $('Prepare Message').first().json;\n\nconst vlanId = current.vlan_id || parsed.vlan_id || '';\nconst vlanName = current.vlan_name || parsed.vlan_name || '';\nconst caseId = current.case_id || parsed.case_id || '';\n\nreturn [\n  {\n    json: {\n      action_id: 'ACT-' + Date.now(),\n      chat_id: String(prepared.chat_id || ''),\n      admin_name: prepared.user_name || prepared.user_id || '',\n      case_id: caseId || '',\n      action_type: 'delete_vlan',\n      action_summary: `Delete VLAN ${vlanId || 'UNKNOWN'}`,\n      approval_status: 'Pending',\n      created_at: new Date().toISOString(),\n      vlan_id: String(vlanId || ''),\n      vlan_name: String(vlanName || '')\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        320
+      ],
+      "id": "dd7557c3-7818-407d-b581-93e4e466a193",
+      "name": "Prepare Pending Delete Row"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\n// Handles both cases:\n// 1. input is directly { status, vlan_count, vlans }\n// 2. input is wrapped like { data: [...] } or array-like output\nconst result = Array.isArray(data)\n  ? data[0]\n  : Array.isArray(data.data)\n    ? data.data[0]\n    : data;\n\nconst status = result.status || 'unknown';\nconst vlanCount = result.vlan_count || (result.vlans ? result.vlans.length : 0);\nconst vlans = Array.isArray(result.vlans) ? result.vlans : [];\n\nif (status !== 'success') {\n  return [\n    {\n      json: {\n        ...data,\n        reply_text: `\u26a0\ufe0f Could not retrieve VLAN information.\\n\\nStatus: ${status}`\n      }\n    }\n  ];\n}\n\nconst importantVlans = vlans.filter(vlan => {\n  const id = Number(vlan.vlan_id);\n  return id < 1002; // hides Cisco legacy default VLANs 1002\u20131005\n});\n\nconst lines = importantVlans.map(vlan => {\n  const ports =\n    vlan.interfaces && vlan.interfaces.length > 0\n      ? vlan.interfaces.join(', ')\n      : 'No access ports assigned';\n\n  return `\u2022 VLAN ${vlan.vlan_id} \u2014 ${vlan.vlan_name}\n  Status: ${vlan.status}\n  Ports: ${ports}`;\n});\n\nconst replyText = `\ud83d\udce1 VLAN Summary\n\nStatus: \u2705 Success\nTotal VLANs found: ${vlanCount}\nDisplayed VLANs: ${importantVlans.length}\n\n${lines.join('\\n\\n')}`;\n\nreturn [\n  {\n    json: {\n      ...data,\n      reply_text: replyText\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        -272
+      ],
+      "id": "e72eaa41-cf05-4b7d-8885-e2737b0a8e8a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "OfgFqQIU18nKUjID",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/OfgFqQIU18nKUjID",
+          "cachedResultName": "backup_router_config_workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "router_name": "={{ $json.router_name || 'R2' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "router_name",
+              "displayName": "router_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": " config_type",
+              "displayName": " config_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "adm-backup-router",
+      "name": "Execute Backup Router Config Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -880,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Prepare Message\"].json[\"chat_id\"] }}",
+        "text": "={{ \n$json.status === 'success'\n? `\u2705 Backup completed for ${$json.router_name}\n\nSaved files:\n${($json.files || []).map(f => `- ${f}`).join('\\n')}\n\nTFTP Server: ${$json.tftp_server_ip}\nPath: ${$json.tftp_path}`\n: `\u274c Backup failed for ${$json.router_name || 'router'}\n\nReason: ${$json.message || 'Unknown error'}`\n}}",
+        "additionalFields": {}
+      },
+      "id": "adm-reply-backup-router",
+      "name": "Reply Backup Router Result",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -624,
+        176
+      ],
+      "webhookId": "63e6e5ec-8420-454b-8ff7-3d502b6eedff",
+      "credentials": {
+        "telegramApi": {
+          "id": "60ctX1eeanLReMya",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Message": {
+      "main": [
+        [
+          {
+            "node": "Read Admin Actions1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admin AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Admin JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Parse Admin JSON": {
+      "main": [
+        [
+          {
+            "node": "Direct Admin Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Direct Admin Router": {
+      "main": [
+        [
+          {
+            "node": "Execute Show VLANs Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Denied Logs Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Create VLAN Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Pending Delete Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read Cases",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Backup Router Config Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "General chat",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Execute Show VLANs Workflow": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Denied Logs Workflow": {
+      "main": [
+        [
+          {
+            "node": "Reply Denied Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Create VLAN Workflow": {
+      "main": [
+        [
+          {
+            "node": "Reply Create VLAN Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Pending Delete Action": {
+      "main": [
+        [
+          {
+            "node": "Reply Pending Delete Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Approval Reply": {
+      "main": [
+        [
+          {
+            "node": "Update Admin Action Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Admin Action Status": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Execute Approved Delete VLAN Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Approval Outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Approved Delete VLAN Workflow": {
+      "main": [
+        [
+          {
+            "node": "Reply Delete VLAN Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Cases": {
+      "main": [
+        [
+          {
+            "node": "Attach Case Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Case Actions": {
+      "main": [
+        [
+          {
+            "node": "Format Open Cases",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Department Cases",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Case View",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Diagnostic Plan",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Case Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resolve Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Open Cases": {
+      "main": [
+        [
+          {
+            "node": "Reply Admin Generic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Department Cases": {
+      "main": [
+        [
+          {
+            "node": "Reply Admin Generic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Case View": {
+      "main": [
+        [
+          {
+            "node": "Reply Admin Generic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Diagnostic Plan": {
+      "main": [
+        [
+          {
+            "node": "Append Diagnostic Log",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Reply Admin Generic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Case Status": {
+      "main": [
+        [
+          {
+            "node": "Reply Status Updated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Case": {
+      "main": [
+        [
+          {
+            "node": "Reload Cases After Resolve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reload Cases After Resolve": {
+      "main": [
+        [
+          {
+            "node": "Prepare Resolution Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Resolution Email": {
+      "main": [
+        [
+          {
+            "node": "Send Resolution Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Resolution Email": {
+      "main": [
+        [
+          {
+            "node": "Reply Resolve Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Admin AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Case Context": {
+      "main": [
+        [
+          {
+            "node": "Route Case Actions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        []
+      ]
+    },
+    "Read Admin Actions1": {
+      "main": [
+        [
+          {
+            "node": "Detect Delete Approval Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Delete Approval Reply": {
+      "main": [
+        [
+          {
+            "node": "Route Pending Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Pending Approval": {
+      "main": [
+        [
+          {
+            "node": "Resolve Approval Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Pending Action First",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Admin AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Pending Delete Row": {
+      "main": [
+        [
+          {
+            "node": "Append Pending Delete Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Reply Show VLANs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Backup Router Config Workflow": {
+      "main": [
+        [
+          {
+            "node": "Reply Backup Router Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "871f64bd-be4c-4a87-975f-c6cefcce6331",
+  "versionCounter": 133,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-28T11:52:17.403Z",
+      "createdAt": "2026-04-28T11:52:17.403Z",
+      "role": "workflow:owner",
+      "workflowId": "ENI9yQ6IE7z9WsnF",
+      "projectId": "Cn6cqZj3eh81Llze",
+      "project": {
+        "updatedAt": "2025-11-29T17:35:11.160Z",
+        "createdAt": "2025-11-29T13:20:23.933Z",
+        "id": "Cn6cqZj3eh81Llze",
+        "name": "Mlandvo Nkambule <nmlandvo3@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "projectRelations": [
+          {
+            "updatedAt": "2025-11-29T13:20:23.934Z",
+            "createdAt": "2025-11-29T13:20:23.934Z",
+            "userId": "24503047-5a1e-4e16-a5a3-3c21d5068680",
+            "projectId": "Cn6cqZj3eh81Llze",
+            "user": {
+              "updatedAt": "2026-05-14T12:55:13.000Z",
+              "createdAt": "2025-11-29T13:20:23.930Z",
+              "id": "24503047-5a1e-4e16-a5a3-3c21d5068680",
+              "email": "nmlandvo3@gmail.com",
+              "firstName": "Mlandvo",
+              "lastName": "Nkambule",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2025-11-29T17:35:25.080Z",
+                "personalization_survey_n8n_version": "1.121.3"
+              },
+              "settings": {
+                "firstSuccessfulWorkflowId": "ZsafyvYkqYWF0qv5",
+                "userActivated": true,
+                "userActivatedAt": 1765710800202,
+                "npsSurvey": {
+                  "responded": true,
+                  "lastShownAt": 1768713175748
+                },
+                "easyAIWorkflowOnboarded": true
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2026-05-14",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": []
+}

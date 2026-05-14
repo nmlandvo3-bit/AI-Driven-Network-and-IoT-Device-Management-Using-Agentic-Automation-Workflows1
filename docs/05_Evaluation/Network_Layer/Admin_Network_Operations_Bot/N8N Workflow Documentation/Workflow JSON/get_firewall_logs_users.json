@@ -1,0 +1,146 @@
+{
+  "updatedAt": "2026-05-05T05:55:54.000Z",
+  "createdAt": "2026-05-04T00:58:09.184Z",
+  "id": "w0Jzr6tJyLDxU8pv",
+  "name": "get_firewall_logs_users",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -208,
+        -128
+      ],
+      "id": "6e1e9a3a-b7b2-4d50-b56c-64978be2bded",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "command": "execute log filter reset\nexecute log filter field action deny\nexecute log display"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -128
+      ],
+      "id": "d3f9d275-58f2-40fa-b9ed-d73c30917773",
+      "name": "Execute a command",
+      "credentials": {
+        "sshPassword": {
+          "id": "F1vv7y4u7jWhEacc",
+          "name": "Firewall"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw = $json.stdout || \"\";\n\n// Clean logs safely\nlet clean = raw.includes(\"logs returned.\")\n  ? raw.split(\"logs returned.\").pop()\n  : raw;\n\nclean = clean || \"\";\n\nconst lines = clean.split(\"\\n\");\n\n// Destination/platform mapping\nconst destinationMap = {\n   // Twitter / X specific CDN ranges seen in your test\n  \"162.159.140\": \"X / Twitter CDN\",\n  \"162.159.141\": \"X / Twitter CDN\",\n\n  // Facebook / Meta\n  \"31.13\": \"Facebook / Meta\",\n  \"157.240\": \"Facebook / Instagram / WhatsApp / Meta\",\n  \"69.171\": \"Facebook / Meta\",\n  \"173.252\": \"Facebook / Meta\",\n\n  // Google / YouTube\n  \"142.250\": \"Google / YouTube\",\n  \"172.217\": \"Google / YouTube\",\n  \"216.58\": \"Google / YouTube\",\n  \"74.125\": \"Google / YouTube\",\n  \"8.8.8.8\": \"Google DNS\",\n\n  // Twitter / X\n  \"104.244\": \"Twitter / X\",\n  \"199.16\": \"Twitter / X\",\n  \"199.59\": \"Twitter / X\",\n\n  // TikTok / CDN\n  \"172.66\": \"TikTok / CDN\",\n\n  // Cloudflare / CDN fallback\n  \"162.159\": \"Cloudflare CDN\",\n  \"104.16\": \"Cloudflare CDN\",\n  \"104.17\": \"Cloudflare CDN\",\n  \"104.18\": \"Cloudflare CDN\",\n  \"104.21\": \"Cloudflare CDN\",\n  \"172.67\": \"Cloudflare CDN\"\n};\n\n// Source subnet to department/VLAN mapping\nconst departmentMap = [\n  { prefix: \"192.168.10.\", department: \"HR\", vlan: \"VLAN 10\" },\n  { prefix: \"192.168.20.\", department: \"FINANCE\", vlan: \"VLAN 20\" },\n  { prefix: \"192.168.30.\", department: \"IT\", vlan: \"VLAN 30\" },\n  { prefix: \"192.168.40.\", department: \"STAFF\", vlan: \"VLAN 40\" },\n  { prefix: \"192.168.50.\", department: \"SERVERS\", vlan: \"VLAN 50\" },\n  { prefix: \"192.168.60.\", department: \"MGMT_INTERNAL\", vlan: \"VLAN 60\" },\n  { prefix: \"192.168.70.\", department: \"GUEST\", vlan: \"VLAN 70\" },\n  { prefix: \"192.168.99.\", department: \"MGMT\", vlan: \"VLAN 99\" },\n  { prefix: \"192.168.120.\", department: \"HR_USERS\", vlan: \"VLAN 120\" }\n];\n\nfunction getDepartmentInfo(srcIp) {\n  const match = departmentMap.find(item => srcIp.startsWith(item.prefix));\n\n  if (!match) {\n    return {\n      department: \"UNKNOWN\",\n      vlan: \"UNKNOWN\"\n    };\n  }\n\n  return {\n    department: match.department,\n    vlan: match.vlan\n  };\n}\n\nfunction getDestinationName(dstIp, line = \"\") {\n  const lowerLine = line.toLowerCase();\n\n  // Prefer explicit FortiGate object/site/policy text if present\n  if (lowerLine.includes(\"facebook.com\") || lowerLine.includes(\"block_facebook\")) {\n    return \"Facebook\";\n  }\n\n  if (lowerLine.includes(\"instagram.com\") || lowerLine.includes(\"block_instagram\")) {\n    return \"Instagram\";\n  }\n\n  if (lowerLine.includes(\"whatsapp.com\") || lowerLine.includes(\"block_whatsapp\")) {\n    return \"WhatsApp\";\n  }\n\n  if (lowerLine.includes(\"youtube.com\") || lowerLine.includes(\"block_youtube\")) {\n    return \"YouTube\";\n  }\n\n  if (lowerLine.includes(\"twitter.com\") || lowerLine.includes(\"block_twitter\")) {\n    return \"Twitter\";\n  }\n\n  if (lowerLine.includes(\"x.com\") || lowerLine.includes(\"block_x\")) {\n    return \"X\";\n  }\n\n  // Fallback to IP prefix mapping\n  for (const prefix of Object.keys(destinationMap)) {\n    if (dstIp.startsWith(prefix)) {\n      return destinationMap[prefix];\n    }\n  }\n\n  return dstIp;\n}\n\nconst seen = new Set();\nconst results = [];\n\nfor (let line of lines) {\n  if (line.includes('action=\"deny\"') && line.includes(\"srcip=\")) {\n    const srcMatch = line.match(/srcip=([\\d.]+)/);\n    const dstMatch = line.match(/dstip=([\\d.]+)/);\n\n    const src = srcMatch ? srcMatch[1] : null;\n    const dst = dstMatch ? dstMatch[1] : null;\n\n    if (!src || !dst) continue;\n\n    const key = `${src}-${dst}`;\n    if (seen.has(key)) continue;\n    seen.add(key);\n\n    const deptInfo = getDepartmentInfo(src);\n    const platform = getDestinationName(dst, line);\n\n    results.push({\n      user: `${src} (${deptInfo.department} - ${deptInfo.vlan})`,\n      source_ip: src,\n      department: deptInfo.department,\n      vlan: deptInfo.vlan,\n      destination: platform,\n      raw_ip: dst,\n      status: \"DENIED\"\n    });\n  }\n}\n\n// Clean Telegram-ready message\nconst message =\n  results.length === 0\n    ? \"\u2705 No denied firewall logs found.\"\n    : `\ud83d\udd25 FortiGate Denied Traffic Report\n\nTotal denied events: ${results.length}\n\n${results\n  .map((log, index) => {\n    return `#${index + 1}\nUser: ${log.user}\nDestination: ${log.destination}\nRaw IP: ${log.raw_ip}\nStatus: ${log.status}`;\n  })\n  .join(\"\\n\\n\")}`;\n\nreturn {\n  json: {\n    logs: results,\n    clean_message: message\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        -128
+      ],
+      "id": "cce0dd6a-6382-4f93-911c-e38ae7cead36",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Execute a command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a command": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "daf6ebbd-8d75-4fe6-961a-ff33faa49be2",
+  "versionCounter": 32,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2026-05-04T00:58:09.186Z",
+      "createdAt": "2026-05-04T00:58:09.186Z",
+      "role": "workflow:owner",
+      "workflowId": "w0Jzr6tJyLDxU8pv",
+      "projectId": "Cn6cqZj3eh81Llze",
+      "project": {
+        "updatedAt": "2025-11-29T17:35:11.160Z",
+        "createdAt": "2025-11-29T13:20:23.933Z",
+        "id": "Cn6cqZj3eh81Llze",
+        "name": "Mlandvo Nkambule <nmlandvo3@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "projectRelations": [
+          {
+            "updatedAt": "2025-11-29T13:20:23.934Z",
+            "createdAt": "2025-11-29T13:20:23.934Z",
+            "userId": "24503047-5a1e-4e16-a5a3-3c21d5068680",
+            "projectId": "Cn6cqZj3eh81Llze",
+            "user": {
+              "updatedAt": "2026-05-14T12:55:13.000Z",
+              "createdAt": "2025-11-29T13:20:23.930Z",
+              "id": "24503047-5a1e-4e16-a5a3-3c21d5068680",
+              "email": "nmlandvo3@gmail.com",
+              "firstName": "Mlandvo",
+              "lastName": "Nkambule",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2025-11-29T17:35:25.080Z",
+                "personalization_survey_n8n_version": "1.121.3"
+              },
+              "settings": {
+                "firstSuccessfulWorkflowId": "ZsafyvYkqYWF0qv5",
+                "userActivated": true,
+                "userActivatedAt": 1765710800202,
+                "npsSurvey": {
+                  "responded": true,
+                  "lastShownAt": 1768713175748
+                },
+                "easyAIWorkflowOnboarded": true
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2026-05-14",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": []
+}

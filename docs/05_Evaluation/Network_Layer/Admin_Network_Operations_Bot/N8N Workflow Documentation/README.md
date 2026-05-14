@@ -21,13 +21,29 @@ Following the Level 5 evaluation rules:
 
 The workflow lets the administrator send natural-language or command-style Telegram messages, then routes them into deterministic n8n branches.
 
+## Workflow JSON files included in this folder
+
+This documentation folder now also includes the actual exported JSON workflows used in the implementation.
+
+Location:
+
+- `Workflow JSON/`
+
+Included workflow exports:
+
+- `Workflow JSON/Admin Network Operations Bot 1.json` - main workflow
+- `Workflow JSON/show_vlans_workflow.json` - child workflow for VLAN inventory
+- `Workflow JSON/vlans.json` - child workflow for VLAN create/delete operations
+- `Workflow JSON/get_firewall_logs_users.json` - child workflow for denied-log retrieval
+- `Workflow JSON/backup_router_config_workflow.json` - child workflow for router backup to TFTP
+
 ## Main workflow file used for this documentation
 
-The local workflow evidence used for this documentation is the later draft:
+The local workflow evidence first used for this documentation was the later draft:
 
 - `admin_network_operations_bot_1.after-backup-route.json`
 
-This version includes the **backup router config** route in addition to the earlier case/VLAN/log branches.
+That local draft was useful because it clearly showed the backup route addition. After that, the live n8n exports were also added under `Workflow JSON/` so the repository contains the actual workflow JSON set used for this evaluation subsection.
 
 ## High-level workflow design
 
@@ -238,6 +254,17 @@ and a lab path involving:
 - `IOU1` for VLAN operations;
 - `ubuntu_server-2` as the Ubuntu TFTP server host;
 - a firewall/jump path used by the VLAN Python automation script.
+
+## Child workflow structure
+
+The main workflow depends on four child workflows:
+
+1. `show_vlans_workflow`
+2. `vlans`
+3. `get_firewall_logs_users`
+4. `backup_router_config_workflow`
+
+This means the n8n implementation is not just one standalone bot workflow. It is a small workflow group where the main admin bot acts as the router/orchestrator and the child workflows handle specific network tasks.
 
 ## Suggested evaluation evidence to collect
 
