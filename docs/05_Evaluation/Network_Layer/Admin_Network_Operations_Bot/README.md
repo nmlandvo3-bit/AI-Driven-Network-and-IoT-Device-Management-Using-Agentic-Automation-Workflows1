@@ -14,3 +14,11 @@ This folder contains the evaluation documentation for the **Admin Network Operat
   - extracted scripts and code used by the workflow
 - `TEST_CASES_AND_EVIDENCE.md`
   - evaluation checklist, test cases, and evidence tracker
+
+## Notes
+
+This structure follows your requested separation:
+
+- **n8n documentation** stays outside the script folder
+- **GNS3 documentation** stays outside the script folder
+- **Script Code** only stores script/code artifacts used by the workflow

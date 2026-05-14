@@ -6,17 +6,17 @@ This subsection documents the **Network Layer evaluation work** for the workflow
 
 Following the Level 5 evaluation rules:
 
-- this write-up documents **one member workflow path**, not the whole team project;
-- it focuses on the **workflow behaviour, scripts, test evidence points, and GNS3 lab context** used for this subsection;
+- this write-up documents **one member workflow path**, not the whole team project
+- it focuses on the **workflow behaviour, scripts, test evidence points, and GNS3 lab context** used for this subsection
 - it does **not** store secrets, API keys, bot tokens, SSH private keys, or licensed images.
 
 ## What this workflow is about
 
 **Admin Network Operations Bot** is an administrator-facing **n8n + Telegram workflow** that supports:
 
-1. **network case management**;
-2. **read-only network visibility tasks** such as showing VLANs and denied logs;
-3. **controlled network change tasks** such as VLAN creation and VLAN deletion;
+1. **network case management**
+2. **read-only network visibility tasks** such as showing VLANs and denied logs
+3. **controlled network change tasks** such as VLAN creation and VLAN deletion
 4. **router configuration backup** to the Ubuntu TFTP server in the GNS3 lab.
 
 The workflow lets the administrator send natural-language or command-style Telegram messages, then routes them into deterministic n8n branches.
@@ -81,10 +81,10 @@ The supported actions in the documented workflow are:
 
 After AI output, **Parse Admin JSON**:
 
-- cleans malformed JSON if needed;
-- maps aliases such as `resolve`, `update`, or `diagnose` to workflow actions;
-- extracts case IDs;
-- extracts VLAN ID / VLAN name;
+- cleans malformed JSON if needed
+- maps aliases such as `resolve`, `update`, or `diagnose` to workflow actions
+- extracts case IDs
+- extracts VLAN ID / VLAN name
 - extracts router backup parameters such as `R2`, `running`, `startup`, or `both`.
 
 ### Pending-approval guard
@@ -117,10 +117,10 @@ Reads case details and formats a single-case response with employee, department,
 
 Creates a structured **diagnostic plan** without making live network changes. The plan includes:
 
-1. reachability checks;
-2. VLAN assignment checks;
-3. inter-VLAN routing checks;
-4. ACL / firewall checks;
+1. reachability checks
+2. VLAN assignment checks
+3. inter-VLAN routing checks
+4. ACL / firewall checks
 5. likely cause and recommendation summary.
 
 The workflow also appends the generated plan to `diagnostic_logs`.
@@ -167,9 +167,9 @@ Delete does **not** execute immediately.
 
 Instead it:
 
-1. prepares a pending delete record;
-2. appends that record to `admin_actions`;
-3. asks the administrator to reply `YES` or `NO`;
+1. prepares a pending delete record
+2. appends that record to `admin_actions`
+3. asks the administrator to reply `YES` or `NO`
 4. only after approval, calls the child workflow `vlans` with `action=delete`.
 
 This is the strongest built-in safety control in the workflow.
@@ -215,11 +215,11 @@ The extracted scripts are stored in `Script Code/`.
 
 The main workflow contains custom JavaScript for:
 
-- parsing AI output;
-- preserving case context across row-based Data Table branches;
-- formatting open cases, department cases, and single-case views;
-- generating the diagnostic plan;
-- handling delete approval logic;
+- parsing AI output
+- preserving case context across row-based Data Table branches
+- formatting open cases, department cases, and single-case views
+- generating the diagnostic plan
+- handling delete approval logic
 - formatting VLAN inventory output.
 
 ### Python VLAN automation script
@@ -230,12 +230,12 @@ The VLAN workflow uses a Python script documented here as:
 
 Based on the preserved local script evidence, its behaviour is:
 
-- connect through a **FortiGate/jump path**;
-- reach the Cisco switch used for VLAN operations;
-- run `show vlan brief`;
-- for **create**, choose an eligible access port, create the VLAN, assign the port, and save the configuration;
-- for **delete**, move assigned ports back to VLAN 1, remove the VLAN, and save the configuration;
-- update the corresponding firewall-side VLAN interface;
+- connect through a **FortiGate/jump path**
+- reach the Cisco switch used for VLAN operations
+- run `show vlan brief`
+- for **create**, choose an eligible access port, create the VLAN, assign the port, and save the configuration
+- for **delete**, move assigned ports back to VLAN 1, remove the VLAN, and save the configuration
+- update the corresponding firewall-side VLAN interface
 - return JSON back to n8n.
 
 To comply with repository rules, the stored copy is sanitized and replaces all live credentials and addresses with placeholders.
@@ -250,9 +250,9 @@ In short, the workflow evidence points to the GNS3 project:
 
 and a lab path involving:
 
-- `R2` for router backup operations;
-- `IOU1` for VLAN operations;
-- `ubuntu_server-2` as the Ubuntu TFTP server host;
+- `R2` for router backup operations
+- `IOU1` for VLAN operations
+- `ubuntu_server-2` as the Ubuntu TFTP server host
 - a firewall/jump path used by the VLAN Python automation script.
 
 ## Child workflow structure
@@ -266,3 +266,23 @@ The main workflow depends on four child workflows:
 
 This means the n8n implementation is not just one standalone bot workflow. It is a small workflow group where the main admin bot acts as the router/orchestrator and the child workflows handle specific network tasks.
 
+## Suggested evaluation evidence to collect
+
+To satisfy Level 5 evaluation expectations, the following evidence should be added when final screenshots are available:
+
+1. Telegram message that triggers the workflow
+2. n8n execution path screenshot
+3. Data Table row before/after update for case actions
+4. delete-VLAN approval prompt screenshot
+5. VLAN creation success screenshot
+6. denied-logs output screenshot
+7. backup-router result screenshot
+8. GNS3 topology screenshot for `Medium_Company_Network-1-89`
+9. device CLI evidence such as `show vlan brief` or router backup prompts
+10. result summary table for pass/fail testing.
+
+## Limitations and honesty note
+
+- I could not live-query the GNS3 API at documentation time because the saved GNS3 API endpoint was unreachable during this session.
+- For that reason, the GNS3 device summary in this subsection is based on **preserved project notes, script evidence, and workflow references**, not a fresh real-time topology pull.
+- This is explicitly stated so the documentation stays accurate and academically honest.

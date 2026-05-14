@@ -6,9 +6,9 @@ This file is a ready-to-use evaluation checklist for **Admin Network Operations 
 
 This repository subsection should contain:
 
-- workflow documentation;
-- test cases;
-- screenshots/evidence references;
+- workflow documentation
+- test cases
+- screenshots/evidence references
 - scripts used in the evaluation.
 
 It should **not** contain secrets.

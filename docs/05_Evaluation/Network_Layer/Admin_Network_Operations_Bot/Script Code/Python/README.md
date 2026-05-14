@@ -8,9 +8,9 @@ The real workflow used SSH/jump-host access to reach network devices, but the re
 
 So in this folder:
 
-- real usernames may be replaced with placeholders when needed;
-- real passwords are removed;
-- live management IPs used only for secret access paths are replaced with placeholders;
+- real usernames may be replaced with placeholders when needed
+- real passwords are removed
+- live management IPs used only for secret access paths are replaced with placeholders
 - the workflow logic is preserved for evaluation/documentation purposes.
 
 ## Runtime requirement: Python virtual environment
@@ -63,37 +63,37 @@ The full path was:
 
 The script:
 
-- checks whether the VLAN already exists;
-- reads `show interface status` to find a usable access port;
-- creates the VLAN;
-- names the VLAN;
-- assigns a selected access port to that VLAN;
-- saves the switch configuration;
-- creates or updates the related firewall VLAN interface;
+- checks whether the VLAN already exists
+- reads `show interface status` to find a usable access port
+- creates the VLAN
+- names the VLAN
+- assigns a selected access port to that VLAN
+- saves the switch configuration
+- creates or updates the related firewall VLAN interface
 - returns a success/error JSON response.
 
 ### For VLAN deletion
 
 The script:
 
-- checks whether the VLAN exists;
-- blocks deletion of protected default VLANs;
-- reads `show vlan brief` to find ports assigned to the VLAN;
-- moves those ports back to VLAN 1;
-- removes the VLAN from the switch;
-- saves the configuration;
-- removes the related firewall VLAN interface;
+- checks whether the VLAN exists
+- blocks deletion of protected default VLANs
+- reads `show vlan brief` to find ports assigned to the VLAN
+- moves those ports back to VLAN 1
+- removes the VLAN from the switch
+- saves the configuration
+- removes the related firewall VLAN interface
 - returns a success/error JSON response.
 
 ## SSH / access path used
 
 The original automation path used a chained connection model:
 
-1. connect to the firewall/jump device;
-2. SSH from there to an intermediate target if required;
-3. SSH onward to the switch;
-4. run Cisco CLI commands on `IOU1`;
-5. return to the firewall context;
+1. connect to the firewall/jump device
+2. SSH from there to an intermediate target if required
+3. SSH onward to the switch
+4. run Cisco CLI commands on `IOU1`
+5. return to the firewall context
 6. update the firewall-side VLAN interface settings.
 
 For safety, this repository version shows that path only with placeholders such as:
@@ -114,9 +114,9 @@ Based on the preserved workspace evidence for this workflow path, this is the Py
 
 Other behavior in the workflow was handled by:
 
-- n8n nodes;
-- n8n Code-node JavaScript;
-- child workflow orchestration;
+- n8n nodes
+- n8n Code-node JavaScript
+- child workflow orchestration
 - router backup flow through the backup child workflow.
 
 So the Python folder contains the Python automation actually used by this part of the project, rather than unrelated scripts.
