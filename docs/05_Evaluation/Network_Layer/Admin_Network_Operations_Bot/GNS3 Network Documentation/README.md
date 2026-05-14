@@ -13,7 +13,7 @@ A `Project Files/` subfolder is now included so this section stores the actual p
 - `Project Files/Medium_Company_Network-1-89.links.json` - link inventory export
 - `Project Files/Medium_Company_Network-1-89.full-export.json` - combined project, node, and link export
 
-These files were collected from the live project `Medium_Company_Network-1-89` on the reachable GNS3 server and included here as implementation evidence.
+These files were collected from the live project `Medium_Company_Network-1-89` on the GNS3 server and included here as implementation evidence.
 
 ## Confirmed devices from the live project export
 
