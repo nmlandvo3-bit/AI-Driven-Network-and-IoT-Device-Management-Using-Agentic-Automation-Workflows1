@@ -9,6 +9,7 @@ This folder contains the evaluation documentation for the **Admin Network Operat
   - includes a `Workflow JSON/` subfolder containing the main workflow export and child workflow exports
 - `GNS3 Network Documentation/`
   - documentation for the GNS3 lab, network setup, and devices used with this workflow
+  - includes a `Project Files/` subfolder containing the project file and live node/link exports
 - `Script Code/`
   - extracted scripts and code used by the workflow
 - `TEST_CASES_AND_EVIDENCE.md`

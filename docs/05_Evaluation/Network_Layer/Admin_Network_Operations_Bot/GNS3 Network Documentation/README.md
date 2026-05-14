@@ -12,19 +12,42 @@ This summary is built from:
 - preserved project notes from earlier work on the GNS3 environment;
 - the local file `gns3 ubuntu sever.md`;
 - the VLAN Python automation script evidence;
-- workflow command references inside `Admin Network Operations Bot 1`.
+- workflow command references inside `Admin Network Operations Bot 1`;
+- a fresh live GNS3 API pull from the active server during this documentation update.
 
-A fresh live API pull was attempted during this documentation session, but the saved GNS3 API host was not reachable at that moment. Therefore, the device list below is documented from the preserved evidence rather than pretending a live sync happened.
+## Project files included in this folder
 
-## Confirmed or strongly evidenced devices for this workflow
+A `Project Files/` subfolder is now included so this section stores the actual project file evidence used for the lab:
 
-| Device / node | Role in this workflow evidence | Evidence source |
+- `Project Files/Medium_Company_Network-1-89.gns3` - project metadata file from the live GNS3 API
+- `Project Files/Medium_Company_Network-1-89.nodes.json` - node inventory export
+- `Project Files/Medium_Company_Network-1-89.links.json` - link inventory export
+- `Project Files/Medium_Company_Network-1-89.full-export.json` - combined project, node, and link export
+
+These files were collected from the live project `Medium_Company_Network-1-89` on the reachable GNS3 server and included here as implementation evidence.
+
+## Confirmed devices from the live project export
+
+The live project export showed **16 nodes** and **15 links**.
+
+| Device / node | Type | Role in this workflow evidence |
 | --- | --- | --- |
-| `R2` | Router used for config backup through the backup child workflow | workflow route + Ubuntu TFTP notes |
-| `IOU1` | Cisco switch used for VLAN operations (`show vlan brief`, access-port assignment, VLAN delete) | Python VLAN script + Ubuntu notes |
-| `ubuntu_server-2` | Ubuntu Server node used as the TFTP backup target | Ubuntu notes |
-| firewall / FortiGate jump device | jump path used by the VLAN Python script before reaching the switch | Python VLAN script |
-| `ubuntu_server-1` | existed in the project at an earlier stage, but was intentionally skipped during one start-up session | saved 2026-03-05 notes |
+| `R2` | `dynamips` | Router used for config backup through the backup child workflow |
+| `IOU1` | `iou` | Cisco switch used for VLAN operations (`show vlan brief`, access-port assignment, VLAN delete) |
+| `ubuntu_server-2` | `qemu` | Ubuntu Server node used as the TFTP backup target |
+| `FortiGate7.0.9-2` | `qemu` | firewall/jump device used in the VLAN automation path |
+| `VLAN10—HR` | `ethernet_switch` | access segment for HR |
+| `VLAN20—FINANCE` | `ethernet_switch` | access segment for Finance |
+| `VLAN30—IT` | `ethernet_switch` | access segment for IT |
+| `VLAN40—STAFF` | `ethernet_switch` | access segment for Staff |
+| `DMZ_GUEST_VLAN70` | `ethernet_switch` | guest/DMZ access segment |
+| `HR-PC` | `vpcs` | end-user test host |
+| `FINACE-PC` | `vpcs` | end-user test host |
+| `IT-PC` | `vpcs` | end-user test host |
+| `STAFF-PC` | `vpcs` | end-user test host |
+| `GUEST-PC1` | `vpcs` | guest network test host |
+| `DMZ-PC` | `vpcs` | DMZ network test host |
+| `Cloud1` | `cloud` | external/cloud connectivity node |
 
 ## Ubuntu server setup used for router backup
 

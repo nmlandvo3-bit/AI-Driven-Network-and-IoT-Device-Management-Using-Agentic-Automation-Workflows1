@@ -1,0 +1,21 @@
+{
+  "auto_close": false,
+  "auto_open": false,
+  "auto_start": false,
+  "drawing_grid_size": 25,
+  "filename": "Medium_Company_Network-1-89.gns3",
+  "grid_size": 75,
+  "name": "Medium_Company_Network-1-89",
+  "path": "/opt/gns3/projects/093cbefe-c972-444b-bba4-6e08a90959b4",
+  "project_id": "093cbefe-c972-444b-bba4-6e08a90959b4",
+  "scene_height": 1000,
+  "scene_width": 2000,
+  "show_grid": false,
+  "show_interface_labels": false,
+  "show_layers": false,
+  "snap_to_grid": false,
+  "status": "opened",
+  "supplier": null,
+  "variables": null,
+  "zoom": 58
+}
