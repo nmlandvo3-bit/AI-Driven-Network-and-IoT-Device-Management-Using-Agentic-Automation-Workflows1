@@ -1,6 +1,6 @@
 # Admin Network Operations Bot
 
-This folder contains the evaluation documentation for the **Admin Network Operations Bot 1** workflow.
+This folder contains the evaluation documentation for the **Admin Network Operations Bot ** workflow.
 
 ## Folder structure
 
