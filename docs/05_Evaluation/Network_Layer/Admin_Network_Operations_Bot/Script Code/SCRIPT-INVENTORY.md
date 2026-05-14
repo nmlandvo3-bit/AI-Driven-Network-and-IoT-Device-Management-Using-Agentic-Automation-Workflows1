@@ -23,6 +23,11 @@ This folder stores extracted script logic for **Admin Network Operations Bot 1**
 | File | Purpose |
 | --- | --- |
 | `Python/vlan_manager.sanitized.py` | Sanitized version of the Python VLAN automation script used by the VLAN child workflow. Credentials and live IPs are replaced with placeholders to comply with repository rules. |
+| `Python/show_vlans_workflow.sanitized.py` | Sanitized VLAN inventory script from the GNS3 projects folder, used to retrieve and parse switch VLAN output. |
+| `Python/router_backup.sanitized.py` | Sanitized router backup script for exporting `R2` configuration to the Ubuntu TFTP server. |
+| `Python/BACKUP.sanitized.py` | Sanitized backup-related helper script preserved from the GNS3 projects folder. |
+| `Python/show_policies.sanitized.py` | Sanitized firewall policy inspection script used for visibility into blocked-site / policy data. |
+| `Python/get_acl_list.sanitized.py` | Sanitized ACL inspection script that enriches subnet output with VLAN-name context. |
 | `Python/README.md` | Explains how the Python automation was used in the workflow and documents the SSH/jump path without exposing live credentials. |
 
 ## Notes

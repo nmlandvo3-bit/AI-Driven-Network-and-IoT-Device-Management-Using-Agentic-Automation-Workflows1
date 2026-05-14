@@ -105,3 +105,22 @@ Other behavior in the workflow was handled by:
 - router backup flow through the backup child workflow.
 
 So the Python folder contains the Python automation actually used by this part of the project, rather than unrelated scripts.
+
+
+## Additional Python scripts from `/home/mlandvo/GNS3/projects`
+
+Besides `vlan_manager`, the GNS3 projects directory contained these workflow-support Python scripts, and sanitized copies are now included here:
+
+- `BACKUP.sanitized.py` - backup-oriented network automation helper preserved from the GNS3 projects folder
+- `router_backup.sanitized.py` - router TFTP backup script for `R2`
+- `show_vlans_workflow.sanitized.py` - VLAN inventory retrieval/parsing script
+- `show_policies.sanitized.py` - firewall policy inspection script
+- `get_acl_list.sanitized.py` - ACL listing/enrichment script that maps subnets to VLAN names
+
+### How they were used
+
+- `show_vlans_workflow.sanitized.py` supported the **show VLANs** child workflow.
+- `router_backup.sanitized.py` and `BACKUP.sanitized.py` relate to the **router backup / configuration export** path.
+- `show_policies.sanitized.py` and `get_acl_list.sanitized.py` are supporting inspection scripts for firewall/ACL visibility and policy context.
+
+As with the other Python file, the repository copies keep the logic but remove or replace live device-access secrets.
