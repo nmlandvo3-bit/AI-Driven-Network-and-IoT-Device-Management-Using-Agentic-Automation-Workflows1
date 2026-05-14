@@ -1,0 +1,1223 @@
+{
+  "updatedAt": "2026-05-14T14:27:57.000Z",
+  "createdAt": "2026-05-03T11:41:00.615Z",
+  "id": "1ZYF1t3B4G1Sd9DC",
+  "name": "Employee Network Case Logging",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -784,
+        384
+      ],
+      "id": "52206c05-7caa-401d-9910-de2d1221f91e",
+      "name": "Telegram Trigger",
+      "webhookId": "0118d06c-f579-4ab5-b7ef-f98fd5ee7d1c",
+      "credentials": {
+        "telegramApi": {
+          "id": "yHSdqJ7gsG8gjzCP",
+          "name": "Telegram Dube"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const msg = $json.message || {};\nconst chat = msg.chat || {};\nconst from = msg.from || {};\n\nreturn {\n  json: {\n    source: \"telegram\",\n    channel: \"employee_bot\",\n    chat_id: chat.id || \"\",\n    telegram_user_id: from.id || \"\",\n    telegram_username: from.username || \"\",\n    employee_name: [from.first_name, from.last_name].filter(Boolean).join(\" \"),\n    user_message: msg.text || \"\",\n    message_timestamp: msg.date\n      ? new Date(msg.date * 1000).toISOString()\n      : new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -576,
+        384
+      ],
+      "id": "e57cf821-5c26-4d57-83ff-976d1f520dda",
+      "name": "Extract Telegram Message"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.user_message }}",
+        "options": {
+          "systemMessage": "You are the main network support intake assistant for a company's internal Telegram helpdesk bot.\n\nYour only job is to read the employee's message and return ONLY valid JSON .Do not explain anything. Output JSON only.\n\nReturn this exact structure:\n\n{\n  \"intent\": \"general_chat | policy_check | network_issue | clarification_needed\",\n  \"department\": \"\",\n  \"employee_name\": \"\",\n  \"employee_number\": \"\",\n  \"email\": \"\",\n  \"requested_service\": \"\",\n  \"category\": \"\",\n  \"issue_type\": \"\",\n  \"issue_summary\": \"\",\n  \"needs_clarification\": false,\n  \"clarification_question\": \"\",\n  \"confidence\": \"high | medium | low\"\n}\n\nNETWORK TOPOLOGY CONTEXT (use this to understand department and access relationships):\n- HR = VLAN 10 = 192.168.10.0/24\n- FINANCE = VLAN 20 = 192.168.20.0/24\n- IT = VLAN 30 = 192.168.30.0/24\n- STAFF = VLAN 40 = 192.168.40.0/24\n- SERVERS = VLAN 50 = 192.168.50.0/24\n- MGMT_INTERNAL = VLAN 60 = 192.168.60.0/24\n- GUEST = VLAN 70 = 192.168.70.0/24\n- MGMT = VLAN 99 = 192.168.99.0/24\n- GUEST is isolated from all internal VLANs by ACL VLAN70_ISOLATION on router R2\n- Social media (Facebook, Instagram, WhatsApp, YouTube, Twitter, X) are blocked by FortiGate firewall policy BLOCK_SOCIAL_MEDIA for all users\n\nIntent rules:\n- general_chat: greetings, small talk, nothing IT related.\n- policy_check: employee cannot access a website, app, social media, internal server, or department resource. Includes \"I cannot access X\", \"X is blocked\", \"why can't I reach Y\".\n- network_issue: real technical fault \u2014 internet down, VPN failing, DNS not resolving, printer not connecting, slow connection, dropped packets.\n- clarification_needed: message is too vague to classify. Only use when source department and target resource are both genuinely unknown.\n\nClassification examples:\n- \"I cannot access Facebook\" \u2192 policy_check, requested_service = Facebook, category = security_policy\n- \"I cannot access YouTube on my PC\" \u2192 policy_check, requested_service = YouTube, category = security_policy\n- \"I'm using the guest PC and cannot reach Staff\" \u2192 policy_check, department = Guest, requested_service = Staff department, category = security_policy\n- \"I cannot access the Ubuntu server from Finance\" \u2192 policy_check, department = Finance, requested_service = Ubuntu server, category = server\n- \"My internet is down\" \u2192 network_issue, category = network\n- \"VPN keeps dropping\" \u2192 network_issue, category = vpn\n- \"DNS is not resolving\" \u2192 network_issue, category = dns\n- \"Hello\" \u2192 general_chat\n- \"I cannot reach HR from Finance\" \u2192 network_issue, both are internal departments with no ACL restrictions\n- \"I cannot access the Ubuntu server from Staff\" \u2192 network_issue, Servers VLAN has no ACL restrictions\n- \"I'm using the guest PC and cannot reach Staff\" \u2192 policy_check, Guest is ACL restricted from all internal VLANs\n\nExtraction rules:\n- Extract department, requested_service, issue_summary from the current message only.\n- Never reuse values from earlier messages.\n- Extract employee_name, employee_number, email only if explicitly stated.\n- category must be one of: network, security_policy, server, internet, application_access, printer, vpn, dns\n\nOutput rules:\n- JSON only.\n- No markdown.\n- No code fences.\n- No text before or after the JSON."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -352,
+        384
+      ],
+      "id": "3bfa5151-c16d-47b4-ad9a-e6607ceb723e",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw =\n  $json.output ??\n  $json.text ??\n  $json.response ??\n  $json.result ??\n  \"\";\n\nlet cleaned = String(raw).trim();\n\n// Strip markdown fences\ncleaned = cleaned\n  .replace(/^```json\\s*/i, \"\")\n  .replace(/^```\\s*/i, \"\")\n  .replace(/\\s*```$/i, \"\");\n\n// Extract real JSON \u2014 Ollama prepends tool trace ending with \"]] \"\nconst toolTraceEnd = cleaned.lastIndexOf(\"]] \");\nif (toolTraceEnd !== -1) {\n  cleaned = cleaned.slice(toolTraceEnd + 3).trim();\n} else {\n  // No tool trace \u2014 try newline-prefixed {\n  const newlineBrace = cleaned.lastIndexOf(\"\\n{\");\n  if (newlineBrace !== -1) {\n    cleaned = cleaned.slice(newlineBrace).trim();\n  } else {\n    // Final fallback \u2014 first {\n    const firstBrace = cleaned.indexOf(\"{\");\n    if (firstBrace > 0) {\n      cleaned = cleaned.slice(firstBrace);\n    }\n  }\n}\n\n// Strip anything after the last }\nconst lastBrace = cleaned.lastIndexOf(\"}\");\nif (lastBrace !== -1 && lastBrace < cleaned.length - 1) {\n  cleaned = cleaned.slice(0, lastBrace + 1);\n}\n\nlet parsed = {};\n\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  parsed = {\n    intent: \"general_chat\",\n    department: \"\",\n    employee_name: \"\",\n    employee_number: \"\",\n    email: \"\",\n    requested_service: \"\",\n    category: \"\",\n    issue_type: \"\",\n    issue_summary: \"\",\n    needs_clarification: false,\n    clarification_question: \"\",\n    confidence: \"low\"\n  };\n}\n\nconst normalizeDepartment = (value = \"\") => {\n  const key = String(value || \"\").trim().toLowerCase();\n  const map = {\n    finance: \"Finance\",\n    hr: \"HR\",\n    it: \"IT\",\n    guest: \"Guest\",\n    staff: \"Staff\",\n    servers: \"Servers\",\n    management: \"Management\",\n    admin: \"Admin\"\n  };\n  return map[key] || String(value || \"\").trim();\n};\n\nif ($json.user_message) {\n  const deptMatch = String($json.user_message).match(/\\b(finance|hr|it|guest|staff|servers|management|admin)\\b(?:\\s+department)?/i);\n  if (deptMatch) {\n    parsed.department = normalizeDepartment(deptMatch[1]);\n  } else if (parsed.department) {\n    parsed.department = normalizeDepartment(parsed.department);\n  }\n} else if (parsed.department) {\n  parsed.department = normalizeDepartment(parsed.department);\n}\n\nif (!String(parsed.category || \"\").trim()) {\n  const msg = String($json.user_message || \"\").toLowerCase();\n  const service = String(parsed.requested_service || \"\").toLowerCase();\n\n  if (\n    parsed.intent === \"policy_check\" ||\n    msg.includes(\"blocked\") ||\n    msg.includes(\"allowed\") ||\n    msg.includes(\"access denied\")\n  ) {\n    parsed.category = \"security_policy\";\n  } else if (service.includes(\"server\")) {\n    parsed.category = \"server\";\n  } else if (service.includes(\"vpn\")) {\n    parsed.category = \"vpn\";\n  } else if (service.includes(\"dns\")) {\n    parsed.category = \"dns\";\n  } else if (service.includes(\"printer\")) {\n    parsed.category = \"printer\";\n  } else if (\n    service.includes(\"internet\") ||\n    service.includes(\"wifi\") ||\n    service.includes(\"network\")\n  ) {\n    parsed.category = \"network\";\n  } else if (\n    service.includes(\"youtube\") ||\n    service.includes(\"facebook\") ||\n    service.includes(\"google\") ||\n    service.includes(\"instagram\") ||\n    service.includes(\"tiktok\")\n  ) {\n    parsed.category = \"application_access\";\n  } else {\n    parsed.category = \"\";\n  }\n}\n\nreturn {\n  json: {\n    ...$json,\n    ...parsed\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        384
+      ],
+      "id": "4494984b-68ef-4546-830e-4510b0fba7ab",
+      "name": "Parse AI Output"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "policy_check",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c4ff30da-e4ca-48a6-b312-619af8ff60c9"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "bb5991f4-05e5-4e0c-8b3b-272396e22fa4",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "network_issue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "5f5dab73-8e5e-4513-aede-825f2a817933",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "clarification_needed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1d2791ed-ab03-4747-8509-b996f84350bc",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "general_chat",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        224,
+        352
+      ],
+      "id": "7cca2aab-e667-429b-b6e1-dd435e154ac7",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Extract Telegram Message\"].json[\"chat_id\"] }}",
+        "text": "={{ $json.final_reply || $json.employee_safe_summary || \"I could not confirm the policy confidently. Please contact the network administrator if needed.\" }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1488,
+        224
+      ],
+      "id": "ee32b4d1-cabf-40d7-a0d7-d1a26a9bccbf",
+      "name": "Reply Policy Result",
+      "webhookId": "8546b06c-8304-49d3-8589-f8dfbfff0fc0",
+      "credentials": {
+        "telegramApi": {
+          "id": "yHSdqJ7gsG8gjzCP",
+          "name": "Telegram Dube"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const caseId = \"CASE-\" + Date.now();\nconst requestedService = String($json.requested_service || '').toLowerCase();\nconst issueType = String($json.issue_type || '').toLowerCase();\nconst issueSummary = String($json.issue_summary || $json.user_message || '').toLowerCase();\nconst intent = String($json.intent || '').toLowerCase();\nconst combined = `${requestedService} ${issueType} ${issueSummary}`;\n\nlet category = 'network';\nif (intent === 'policy_check' || /policy|access denied|blocked|restricted|firewall|acl|permission/.test(combined)) {\n  category = 'security_policy';\n} else if (/ubuntu|server|server unreachable|internal server|server access/.test(combined)) {\n  category = 'server';\n} else if (/youtube|facebook|instagram|tiktok|internet|website|web|browser/.test(combined)) {\n  category = 'internet';\n} else if (/vpn/.test(combined)) {\n  category = 'vpn';\n} else if (/dns/.test(combined)) {\n  category = 'dns';\n} else if (/printer/.test(combined)) {\n  category = 'printer';\n} else if (/application|app|software|system access/.test(combined)) {\n  category = 'application_access';\n}\n\nreturn {\n  json: {\n    ...$json,\n    case_id: caseId,\n    created_at: new Date().toISOString(),\n    employee_name: $json.employee_name || \"\",\n    department: $json.department || \"\",\n    employee_number: $json.employee_number || \"\",\n    email: $json.email || \"\",\n    requested_service: $json.requested_service || \"\",\n    issue_type: $json.issue_type || \"Access issue\",\n    issue_summary: $json.issue_summary || $json.user_message || \"\",\n    category,\n    status: \"open\",\n    assigned_to: \"Mlandvo\",\n    employee_reply: `Your issue has been logged successfully. Case ID: ${caseId}. The network administrator will review it and follow up after diagnosis.`\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        384
+      ],
+      "id": "dac33f3c-7fd8-41e9-b0c7-45ade7facd10",
+      "name": "Build Case Record"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Extract Telegram Message\"].json[\"chat_id\"] }}",
+        "text": "={{ $node[\"Build Case Record\"].json[\"employee_reply\"] }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1376,
+        384
+      ],
+      "id": "562b8476-bbfd-4d62-b682-cef3b2492ba0",
+      "name": "Reply Case logged",
+      "webhookId": "97f73c46-36cf-47a9-b95a-96cd766fca63",
+      "credentials": {
+        "telegramApi": {
+          "id": "yHSdqJ7gsG8gjzCP",
+          "name": "Telegram Dube"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Extract Telegram Message\"].json[\"chat_id\"] }}",
+        "text": "={{ $json.output}}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        864,
+        704
+      ],
+      "id": "cc62ff20-9e02-4724-917a-ba70fb22f6ed",
+      "name": "Ask Clarification",
+      "webhookId": "6248b1e4-0ccf-40d0-8f63-3778be932469",
+      "credentials": {
+        "telegramApi": {
+          "id": "yHSdqJ7gsG8gjzCP",
+          "name": "Telegram Dube"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Extract Telegram Message\"].json[\"chat_id\"] }}",
+        "text": "={{ $json.output || \"Hey! How can I help you today?\" }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        688,
+        976
+      ],
+      "id": "29ed50b0-cbb8-40ee-8360-b5d2254c3d11",
+      "name": "General Chat",
+      "webhookId": "330583ac-e03d-4573-aaff-e17a987d117e",
+      "credentials": {
+        "telegramApi": {
+          "id": "yHSdqJ7gsG8gjzCP",
+          "name": "Telegram Dube"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const text = ($json.user_message || \"\").trim();\n\n// Existing values from earlier nodes\nlet employee_name = ($json.employee_name || \"\").trim();\nlet employee_number = ($json.employee_number || \"\").trim();\nlet email = ($json.email || \"\").trim();\nlet department = ($json.department || \"\").trim();\n\n// ---------- 1. LABELED FIELD MATCHES ----------\nconst labeledName =\n  text.match(/name\\s*[:\\-]\\s*(.+)/i);\n\nconst labeledEmp =\n  text.match(/employee\\s*(number|id)\\s*[:\\-]\\s*([A-Za-z0-9-]+)/i);\n\nconst labeledEmail =\n  text.match(/email\\s*[:\\-]\\s*([A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,})/i);\n\nconst labeledDept =\n  text.match(/department\\s*[:\\-]\\s*(finance|hr|it|guest|staff|servers|management|admin)/i);\n\nconst labeledIssue =\n  text.match(/issue\\s*[:\\-]\\s*(.+)/i);\n\n// ---------- 2. GENERIC EMAIL / EMPLOYEE NUMBER ----------\nconst genericEmail =\n  text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i);\n\nconst genericEmp =\n  text.match(/\\b[A-Z]{2,}-\\d{4,}-\\d{3,}\\b/i) ||\n  text.match(/\\b[A-Z]{2,}-\\d{3,}\\b/i);\n\n// ---------- 3. DEPARTMENT ----------\nconst genericDept =\n  text.match(/\\b(finance|hr|it|guest|staff|servers|management|admin)\\b/i);\n\n// ---------- 4. \"MY NAME IS ...\" ----------\nconst explicitName =\n  text.match(/my name is\\s+([A-Za-z]+(?:\\s+[A-Za-z]+)+)/i);\n\n// ---------- 5. SLASH-SEPARATED FORMAT ----------\n// Example:\n// Luhlelo Dube / FIN-2025-001 / luhlelodube@gmail.com / Finance / I cannot access...\nconst slashParts = text\n  .split(\"/\")\n  .map(s => s.trim())\n  .filter(Boolean);\n\nif (slashParts.length >= 4) {\n  if (!employee_name && slashParts[0]) employee_name = slashParts[0];\n  if (!employee_number && slashParts[1]) employee_number = slashParts[1];\n  if (!email && slashParts[2] && /@/.test(slashParts[2])) email = slashParts[2];\n  if (!department && slashParts[3]) department = slashParts[3];\n}\n\n// ---------- 6. PLAIN MULTILINE FORMAT ----------\n// Example:\n// Welcome Nkambule\n// HR-2025-001\n// hualiguideaiproject@gmail.com\n// HR\n// I cannot access facebook on this pc\nconst lines = text\n  .split(/\\r?\\n/)\n  .map(line => line.trim())\n  .filter(Boolean);\n\nif (lines.length >= 4) {\n  const maybeName = lines[0];\n  const maybeEmp = lines[1];\n  const maybeEmail = lines[2];\n  const maybeDept = lines[3];\n\n  if (!employee_name && /^[A-Za-z]+(?:\\s+[A-Za-z]+)+$/.test(maybeName)) {\n    employee_name = maybeName;\n  }\n\n  if (!employee_number && /\\b[A-Z]{2,}-\\d{4,}-\\d{3,}\\b/i.test(maybeEmp)) {\n    employee_number = maybeEmp;\n  }\n\n  if (!email && /@/.test(maybeEmail)) {\n    email = maybeEmail;\n  }\n\n  if (\n    !department &&\n    /^(finance|hr|it|guest|staff|servers|management|admin)$/i.test(maybeDept)\n  ) {\n    department = maybeDept;\n  }\n}\n\n// ---------- 7. FALLBACK ASSIGNMENTS ----------\nif (!employee_name && labeledName) {\n  employee_name = labeledName[1].trim();\n}\nif (!employee_name && explicitName) {\n  employee_name = explicitName[1].trim();\n}\n\nif (!employee_number && labeledEmp) {\n  employee_number = labeledEmp[2].trim();\n}\nif (!employee_number && genericEmp) {\n  employee_number = genericEmp[0].trim();\n}\n\nif (!email && labeledEmail) {\n  email = labeledEmail[1].trim();\n}\nif (!email && genericEmail) {\n  email = genericEmail[0].trim();\n}\n\nif (!department && labeledDept) {\n  department = labeledDept[1].trim();\n}\nif (!department && genericDept) {\n  department = genericDept[1].trim();\n}\n\n// ---------- 8. OPTIONAL ISSUE EXTRACTION ----------\nlet issue_from_reply = \"\";\nif (labeledIssue) {\n  issue_from_reply = labeledIssue[1].trim();\n} else if (slashParts.length >= 5) {\n  issue_from_reply = slashParts.slice(4).join(\" / \").trim();\n} else if (lines.length >= 5) {\n  issue_from_reply = lines.slice(4).join(\" \").trim();\n}\n\nreturn {\n  json: {\n    ...$json,\n    employee_name,\n    employee_number,\n    email,\n    department,\n    user_message: issue_from_reply || $json.user_message || \"\"\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        448
+      ],
+      "id": "4d9f3e3b-6dca-4eff-af31-5fa738c3d361",
+      "name": "Extract Contact Details"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=={{ `\nCurrent employee message:\n${$json.user_message || $node[\"Extract Telegram Message\"].json[\"user_message\"] || \"\"}\n\nDetected intent:\n${$json.intent || \"unknown\"}\n\nDetected department:\n${$json.department || \"not detected\"}\n\nDetected requested service/resource:\n${$json.requested_service || \"not detected\"}\n\nClarification question to ask:\n${$json.clarification_question || \"not available\"}\n\nAsk only for the single missing item.\n` }}",
+        "options": {
+          "systemMessage": "You are a workplace IT helpdesk clarification assistant.\n\nThe user is already in the middle of an issue report.\n\nThis workflow only does two things:\n- checks existing firewall and router ACL policy evidence\n- or collects enough information to log a case for administrator review\n\nAsk one short clarification question only when a key policy input is missing.\n\nRules:\n- Do not greet the user.\n- Do not restart the conversation.\n- Do not ask random troubleshooting questions.\n- Do not ask about website vs app, website address, asset tag, computer name, SSH, ACL, VLAN, routing, or firewall rule IDs.\n- Only ask for:\n  - the department of the PC/device\n  - the exact service/resource being accessed\n- Keep the question short and plain.\n- Output only the question text."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        544,
+        656
+      ],
+      "id": "1119ef86-63a8-480c-bac5-5df4a62ac141",
+      "name": "AI Agent2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.user_message || $json.issue_summary || \"Hello\" }}",
+        "options": {
+          "systemMessage": "You are a friendly IT helpdesk assistant for a company. Employees message you on Telegram about anything \u2014 greetings, questions, or just chatting.\n\nReply naturally and conversationally like a helpful colleague would. Do NOT give structured or robotic responses. Do NOT ask them to fill in their department or employee number unless they have already mentioned a work issue.\n\nIf someone says \"hi\" or \"hello\", just greet them warmly and let them know you're here to help with anything IT or network related. Be concise. Match the energy of the message."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        400,
+        976
+      ],
+      "id": "85396ef4-eda1-4b8d-9a3c-d7853d9ce495",
+      "name": "AI Agent3"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        544,
+        816
+      ],
+      "id": "6ded9b33-e9e9-414a-8829-e7e025b3a488",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "G30BUdjxFvXeuHYb",
+          "name": "Gemini Dube2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        400,
+        1120
+      ],
+      "id": "11319683-4c17-4bba-be8d-a64472c9e742",
+      "name": "Google Gemini Chat Model3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "pMQEAJXnsJaRX2Td",
+          "name": "Gemini Dube3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const name = $json.employee_name || \"\";\nconst empNum = $json.employee_number || \"\";\nconst email = $json.email || \"\";\nconst department = $json.department || \"\";\n\nconst missing = [];\nif (!name) missing.push(\"your full name\");\nif (!empNum) missing.push(\"your employee number\");\nif (!email) missing.push(\"your email address\");\nif (!department) missing.push(\"your department\");\n\nreturn {\n  json: {\n    ...$json,\n    identity_complete: missing.length === 0,\n    missing_fields: missing\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        448
+      ],
+      "id": "46ede71e-7229-4930-a368-4576d4db7121",
+      "name": "Check Identity Complete"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "50b82ec4-4b2d-40db-94c1-84a3b22a0ad3",
+              "leftValue": "={{ $json.identity_complete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        832,
+        448
+      ],
+      "id": "0298fc19-88a0-45c7-a194-3c51c0bfdfd3",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Extract Telegram Message\"].json[\"chat_id\"] }}",
+        "text": "Before I log this for administrator review, please send these details in one message:\n\nFull name\nEmployee number\nEmail address\nDepartment\nA short description of the issue",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1024,
+        560
+      ],
+      "id": "cf1626ad-7773-44d6-8e0f-69a4bdbc9c68",
+      "name": "Ask for Identity",
+      "webhookId": "1c169da8-bfee-4ecb-a3b6-b9b49ef80bf4",
+      "credentials": {
+        "telegramApi": {
+          "id": "yHSdqJ7gsG8gjzCP",
+          "name": "Telegram Dube"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "ejijSMrtn7IihPd7",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "case_id": "={{ $json.case_id }}",
+            "created_at": "={{ $json.created_at }}",
+            "updated_at": "={{ $json.created_at }}",
+            "employee_name": "={{ $json.employee_name || '' }}",
+            "department": "={{ $json.department || '' }}",
+            "employee_id": "={{ $json.employee_number || '' }}",
+            "email": "={{ $json.email || '' }}",
+            "service_requested": "={{ $json.requested_service || '' }}",
+            "service": "={{ $json.requested_service || '' }}",
+            "issue_type": "={{ $json.issue_type || '' }}",
+            "issue_description": "={{ $json.issue_summary || $json.user_message || '' }}",
+            "description": "={{ $json.issue_summary || $json.user_message || '' }}",
+            "status": "open",
+            "assigned_to": "Mlandvo",
+            "category": "={{ $json.category || \"\" }}",
+            "priority": "={{ $json.category === \"network\" || $json.issue_type === \"Server Unreachable\" || $json.issue_type === \"Connectivity\" ? \"High\" : $json.category === \"security_policy\" || $json.category === \"application_access\" ? \"Medium\" : \"Low\" }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "case_id",
+              "displayName": "case_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "employee_name",
+              "displayName": "employee_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "employee_id",
+              "displayName": "employee_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "department",
+              "displayName": "department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "service",
+              "displayName": "service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "issue_type",
+              "displayName": "issue_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "description",
+              "displayName": "description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "resolution",
+              "displayName": "resolution",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "service_requested",
+              "displayName": "service_requested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "issue_description",
+              "displayName": "issue_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            },
+            {
+              "id": "assigned_to",
+              "displayName": "assigned_to",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        384
+      ],
+      "id": "89dee433-3335-4bc2-be0d-93d588c839f3",
+      "name": "Append row in sheet"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.chat_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -272,
+        624
+      ],
+      "id": "4bf95f1b-4d40-4d23-8b25-f5f053fc4281",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const currentDepartment = ($node[\"Parse AI Output\"].json[\"department\"] || \"\").trim();\nconst currentRequestedService = ($node[\"Parse AI Output\"].json[\"requested_service\"] || \"\").trim();\nconst currentIssueSummary = ($node[\"Parse AI Output\"].json[\"issue_summary\"] || \"\").trim();\nconst currentUserMessage = ($node[\"Extract Telegram Message\"].json[\"user_message\"] || \"\").trim();\n\nconst departmentMap = {\n  HR: {\n    aliases: [\"hr\", \"human resources\", \"hr department\", \"hr network\", \"hr vlan\", \"hr subnet\", \"hr-pc\", \"vlan10\", \"vlan10 hr\"],\n    subnetPrefixes: [\"192.168.10.\"],\n    vlanIds: [10]\n  },\n  Finance: {\n    aliases: [\"finance\", \"accounting\", \"finance department\", \"finance network\", \"finance vlan\", \"finance subnet\", \"finance-pc\", \"vlan20\", \"vlan20 finance\"],\n    subnetPrefixes: [\"192.168.20.\"],\n    vlanIds: [20]\n  },\n  IT: {\n    aliases: [\"it\", \"it department\", \"admin network\", \"it vlan\", \"it subnet\", \"it-pc\", \"vlan30\", \"vlan30 it\"],\n    subnetPrefixes: [\"192.168.30.\"],\n    vlanIds: [30]\n  },\n  Staff: {\n    aliases: [\"staff\", \"staff department\", \"staff vlan\", \"staff subnet\", \"staff-pc\", \"vlan40\", \"vlan40 staff\"],\n    subnetPrefixes: [\"192.168.40.\"],\n    vlanIds: [40]\n  },\n  Servers: {\n    aliases: [\"servers\", \"server\", \"server network\", \"servers vlan\", \"servers subnet\", \"vlan50\", \"vlan50 servers\", \"ubuntu server\", \"hr server\", \"finance server\", \"it server\", \"dmz\"],\n    subnetPrefixes: [\"192.168.50.\"],\n    vlanIds: [50]\n  },\n  Mgmt_Internal: {\n    aliases: [\"mgmt_internal\", \"management internal\", \"internal management\", \"vlan60\", \"vlan60 mgmt\", \"mgmt internal\"],\n    subnetPrefixes: [\"192.168.60.\"],\n    vlanIds: [60]\n  },\n  Guest: {\n    aliases: [\"guest\", \"guest department\", \"guest network\", \"guest vlan\", \"guest subnet\", \"guest-pc\", \"guest-pc1\", \"guest pc\", \"vlan70\", \"vlan70 guest\"],\n    subnetPrefixes: [\"192.168.70.\"],\n    vlanIds: [70]\n  },\n  Mgmt: {\n    aliases: [\"mgmt\", \"management\", \"management vlan\", \"vlan99\", \"vlan99 mgmt\"],\n    subnetPrefixes: [\"192.168.99.\"],\n    vlanIds: [99]\n  }\n};\n\nconst BLOCKED_EXTERNAL_SITES = [\n  \"facebook\",\n  \"facebook.com\",\n  \"instagram\",\n  \"instagram.com\",\n  \"whatsapp\",\n  \"whatsapp.com\",\n  \"youtube\",\n  \"youtube.com\",\n  \"twitter\",\n  \"twitter.com\",\n  \"x\",\n  \"x.com\"\n];\n\nconst GUEST_ISOLATED_FROM = [\"HR\", \"Finance\", \"IT\", \"Staff\", \"Servers\", \"Mgmt_Internal\", \"Mgmt\"];\n\nconst serviceAliases = {\n  facebook: [\"facebook\", \"fb\", \"facebook.com\"],\n  youtube: [\"youtube\", \"yt\", \"youtube.com\"],\n  instagram: [\"instagram\", \"instagram.com\"],\n  whatsapp: [\"whatsapp\", \"whatsapp.com\"],\n  twitter: [\"twitter\", \"twitter.com\"],\n  x: [\"x.com\", \" x \", \" x\", \"x \"],\n  google: [\"google\"],\n  netflix: [\"netflix\", \"netflix.com\"],\n  ubuntu_server: [\"ubuntu server\", \"ubuntu_server\", \"ubuntu\", \"server\"],\n  hr: [\"hr\", \"hr server\", \"hr pc\", \"hr-pc\", \"vlan10\"],\n  finance: [\"finance\", \"finance server\", \"finance pc\", \"finance-pc\", \"vlan20\"],\n  it: [\"it\", \"it server\", \"it pc\", \"it-pc\", \"vlan30\"],\n  staff: [\"staff\", \"staff department\", \"staff pc\", \"staff-pc\", \"vlan40\", \"vlan40 staff\"],\n  servers: [\"servers\", \"server\", \"server network\", \"vlan50\", \"ubuntu server\"],\n  guest: [\"guest\", \"guest department\", \"guest pc\", \"guest-pc\", \"guest-pc1\", \"vlan70\"],\n  internet: [\"internet\", \"web\", \"website\", \"online\"],\n  vpn: [\"vpn\"],\n  dns: [\"dns\"],\n  printer: [\"printer\", \"printer server\", \"print server\"]\n};\n\nconst blockedExternalServices = [\"facebook\", \"instagram\", \"whatsapp\", \"youtube\", \"twitter\", \"x\"];\n\nfunction canon(v) {\n  return String(v || \"\").toLowerCase().replace(/[^a-z0-9]+/g, \" \").trim();\n}\n\nconst userMsg = canon(currentUserMessage);\nconst reqService = canon(currentRequestedService);\nconst issueMsg = canon(currentIssueSummary);\n\nfunction textHasAlias(text, alias) {\n  const t = ` ${canon(text)} `;\n  const a = canon(alias);\n\n  if (!a) return false;\n\n  // single-character aliases must match as a whole token only\n  if (a.length === 1) {\n    return t.includes(` ${a} `);\n  }\n\n  return t.includes(` ${a} `) || t.includes(` ${a}.`) || t.includes(` ${a}/`) || t.includes(` ${a}-`);\n}\n\nfunction detectDepartment(text) {\n  const value = canon(text);\n  if (!value) return \"\";\n\n  for (const [department, config] of Object.entries(departmentMap)) {\n    if ((config.aliases || []).some(alias => textHasAlias(value, alias))) return department;\n    if ((config.vlanIds || []).some(id => value.includes(`vlan ${id}`) || value.includes(`vlan${id}`))) return department;\n    if ((config.subnetPrefixes || []).some(prefix => String(text || \"\").includes(prefix))) return department;\n  }\n  return \"\";\n}\n\nfunction mapIpToDepartment(ip) {\n  const raw = String(ip || \"\").trim();\n  if (!raw) return \"\";\n\n  for (const [department, config] of Object.entries(departmentMap)) {\n    if ((config.subnetPrefixes || []).some(prefix => raw.startsWith(prefix))) return department;\n  }\n  return \"\";\n}\n\nfunction normalizeService(service, message, extraText = \"\") {\n  const parts = [service, message, extraText].filter(Boolean);\n\n  for (const [key, aliases] of Object.entries(serviceAliases)) {\n    for (const alias of aliases) {\n      if (parts.some(part => textHasAlias(part, alias))) {\n        return key;\n      }\n    }\n  }\n\n  return \"\";\n}\n\nfunction wildcardToPrefix(wildcard) {\n  const octets = String(wildcard || \"\").split(\".\").map(v => Number(v));\n  if (octets.length !== 4 || octets.some(v => Number.isNaN(v) || v < 0 || v > 255)) return null;\n\n  const maskBits = octets.map(o => (255 - o).toString(2).padStart(8, \"0\")).join(\"\");\n  return maskBits.split(\"\").filter(bit => bit === \"1\").length;\n}\n\nfunction extractAclSpecs(line) {\n  const specs = [];\n  for (const match of line.matchAll(/\\bhost\\s+((?:\\d{1,3}\\.){3}\\d{1,3})/gi)) {\n    specs.push({ type: \"host\", ip: match[1], raw: match[0] });\n  }\n  for (const match of line.matchAll(/((?:\\d{1,3}\\.){3}\\d{1,3})\\s+((?:\\d{1,3}\\.){3}\\d{1,3})/g)) {\n    specs.push({\n      type: \"subnet\",\n      ip: match[1],\n      wildcard: match[2],\n      prefix: wildcardToPrefix(match[2]),\n      raw: `${match[1]} ${match[2]}`\n    });\n  }\n  if (/\\bany\\b/i.test(line)) specs.push({ type: \"any\", raw: \"any\" });\n  return specs;\n}\n\nfunction serviceLabel() {\n  return currentRequestedService || currentUserMessage || currentIssueSummary || \"that service\";\n}\n\nconst requestedDepartment =\n  detectDepartment(currentDepartment) ||\n  detectDepartment(currentUserMessage) ||\n  detectDepartment(currentIssueSummary) ||\n  \"\";\n\nconst normalizedRequestedService =\n  normalizeService(currentRequestedService, currentUserMessage, currentIssueSummary);\n\nconst toolItems = [];\n\ntry {\n  const fwItems = $items(\"Call 'get_firewall_rules_workflow'1\", 0, 0);\n  if (Array.isArray(fwItems)) {\n    for (const item of fwItems) {\n      if (item && item.json) toolItems.push(item.json);\n    }\n  }\n} catch (e) {}\n\ntry {\n  const aclItems = $items(\"Call 'get_acl_list'1\", 0, 0);\n  if (Array.isArray(aclItems)) {\n    for (const item of aclItems) {\n      if (item && item.json) toolItems.push(item.json);\n    }\n  }\n} catch (e) {}\n\nconst snapshot = {\n  department: currentDepartment,\n  effective_department: requestedDepartment || currentDepartment || \"\",\n  requested_service: currentRequestedService,\n  normalized_requested_service: normalizedRequestedService,\n  user_message: currentUserMessage,\n  issue_summary: currentIssueSummary,\n  firewall_sources: [],\n  acl_sources: [],\n  raw_policy_items: toolItems\n};\n\nfor (const j of toolItems) {\n  if (Array.isArray(j.blocked_sites)) {\n    for (const site of j.blocked_sites) {\n      const siteName =\n        typeof site === \"string\"\n          ? site\n          : (\n              site.site ||\n              site.name ||\n              site.destination ||\n              site.platform ||\n              site.service ||\n              site.object_name ||\n              String(site)\n            );\n\n      snapshot.firewall_sources.push({\n        source_ip: \"\",\n        raw_destination: siteName,\n        normalized_service: normalizeService(siteName, \"\", JSON.stringify(site)),\n        mapped_department: \"\",\n        status: \"DENIED\",\n        raw: site\n      });\n    }\n  }\n\n  if (Array.isArray(j.logs)) {\n    for (const log of j.logs) {\n      const srcIp = log.user || log.srcip || log.source_ip || \"\";\n      const dstName = log.destination || log.platform || log.service || log.raw_ip || \"\";\n\n      snapshot.firewall_sources.push({\n        source_ip: srcIp,\n        raw_destination: dstName,\n        normalized_service: normalizeService(dstName, \"\", JSON.stringify(log)),\n        mapped_department: mapIpToDepartment(srcIp) || detectDepartment(JSON.stringify(log)),\n        status: log.status || \"\",\n        raw: log\n      });\n    }\n  }\n\n  const aclText = String(j.clean_message || j.output || j.message || \"\");\n  if (!aclText) continue;\n\n  const lines = aclText\n    .split(/\\r?\\n/)\n    .map(l => l.trim())\n    .filter(Boolean)\n    .filter(line => !line.startsWith(\"\ud83d\udccb ACL Report\"));\n\n  for (const line of lines) {\n    const lower = line.toLowerCase();\n    if (!(lower.includes(\"permit\") || lower.includes(\"deny\") || lower.includes(\"access list\") || lower.includes(\"acl\"))) continue;\n\n    const specs = extractAclSpecs(line);\n    const sourceSpec = specs[0] || null;\n    const destinationSpec = specs[1] || null;\n\n    snapshot.acl_sources.push({\n      line,\n      action: lower.includes(\"deny\") ? \"deny\" : lower.includes(\"permit\") ? \"permit\" : \"unknown\",\n      source_spec: sourceSpec,\n      destination_spec: destinationSpec,\n      source_department: (sourceSpec && mapIpToDepartment(sourceSpec.ip)) || detectDepartment(line),\n      destination_department: (destinationSpec && mapIpToDepartment(destinationSpec.ip)) || detectDepartment(line.replace(sourceSpec?.raw || \"\", \"\")),\n      normalized_service: normalizeService(currentRequestedService, currentUserMessage, line)\n    });\n  }\n}\n\nconst requestedDept = (snapshot.effective_department || snapshot.department || \"\").trim();\nconst requestedService = (snapshot.requested_service || \"\").trim();\nconst normalizedService = (snapshot.normalized_requested_service || \"\").trim();\nconst firewallSources = snapshot.firewall_sources || [];\nconst aclSources = snapshot.acl_sources || [];\n\nfunction isBlockedExternalService() {\n  return (\n    blockedExternalServices.includes(normalizedService) ||\n    BLOCKED_EXTERNAL_SITES.some(s => textHasAlias(currentRequestedService, s) || textHasAlias(currentUserMessage, s))\n  );\n}\n\nfunction isInternalTarget() {\n  return (\n    GUEST_ISOLATED_FROM.some(dept =>\n      textHasAlias(currentRequestedService, dept) ||\n      textHasAlias(currentUserMessage, dept) ||\n      textHasAlias(currentIssueSummary, dept)\n    ) ||\n    [\"ubuntu_server\", \"hr\", \"finance\", \"it\", \"staff\", \"servers\"].includes(normalizedService)\n  );\n}\n\nfunction isInternalStyle() {\n  return isInternalTarget() ||\n    /server|ubuntu|internal|department|hr|finance|guest|it|staff/i.test(`${requestedService} ${currentUserMessage} ${currentIssueSummary}`);\n}\n\nconst confirmedFirewallBlock = firewallSources.some(entry =>\n  (entry.status || \"\").toUpperCase() === \"DENIED\" &&\n  entry.normalized_service === normalizedService\n);\n\nconst rawFirewallMatch =\n  blockedExternalServices.includes(normalizedService) &&\n  firewallSources.some(entry => {\n    const rawDest = canon(entry.raw_destination || \"\");\n    if (!rawDest || rawDest.length < 4) return false;\n    if (!reqService || reqService.length < 4) return false;\n\n    return (\n      userMsg.includes(rawDest) ||\n      reqService.includes(rawDest) ||\n      rawDest.includes(reqService)\n    );\n  });\n\nconst firewallConfirmedBlock =\n  blockedExternalServices.includes(normalizedService) &&\n  (confirmedFirewallBlock || rawFirewallMatch);\n\nconst isGuestSourceDept =\n  requestedDept.toLowerCase() === \"guest\" ||\n  /\\bguest\\s*(pc|network|department|device|vlan)?\\b/i.test(currentUserMessage);\n\nconst nonGuestInternalTargets = [\"HR\", \"Finance\", \"IT\", \"Staff\", \"Servers\", \"Mgmt_Internal\", \"Mgmt\"];\n\nconst isTargetingNonGuestInternal = nonGuestInternalTargets.some(dept =>\n  textHasAlias(currentRequestedService, dept) ||\n  textHasAlias(currentUserMessage, dept) ||\n  textHasAlias(currentIssueSummary, dept)\n);\n\nconst isGuestAsTarget =\n  !isGuestSourceDept &&\n  !!requestedDept &&\n  /\\bguest\\b/i.test(`${currentRequestedService} ${currentUserMessage} ${currentIssueSummary}`) &&\n  !isTargetingNonGuestInternal;\n\nconst isGuestToInternal = isGuestSourceDept && isTargetingNonGuestInternal;\n\nconst isInternalToInternal =\n  !!requestedDept &&\n  requestedDept.toLowerCase() !== \"guest\" &&\n  isInternalTarget() &&\n  !isGuestAsTarget &&\n  !isBlockedExternalService();\n\nconst isServerAccessIssue =\n  /ubuntu|server|servers|vlan50|192\\.168\\.50\\./i.test(`${requestedService} ${currentUserMessage} ${currentIssueSummary}`) &&\n  !!requestedDept &&\n  requestedDept.toLowerCase() !== \"guest\";\n\nconst anyFirewallDenyForService = firewallSources.find(entry =>\n  (entry.status || \"\").toUpperCase() === \"DENIED\" &&\n  (!normalizedService || entry.normalized_service === normalizedService)\n);\n\nconst relevantAcl = requestedDept\n  ? aclSources.filter(entry =>\n      String(entry.source_department || \"\").toLowerCase() === requestedDept.toLowerCase()\n    )\n  : aclSources;\n\nconst matchingAclDeny = relevantAcl.find(entry => {\n  if (entry.action !== \"deny\") return false;\n  if (!normalizedService) return true;\n  if (entry.normalized_service === normalizedService) return true;\n\n  if ([\"hr\", \"finance\", \"it\", \"staff\", \"guest\", \"servers\"].includes(normalizedService) &&\n      String(entry.destination_department || \"\").toLowerCase() === normalizedService.toLowerCase()) {\n    return true;\n  }\n\n  if (normalizedService === \"ubuntu_server\" || normalizedService === \"servers\") {\n    return /ubuntu|server|servers|192\\.168\\.50\\.|vlan50/i.test(entry.line || \"\");\n  }\n\n  return false;\n});\n\nconst matchingAclPermit = relevantAcl.find(entry => {\n  if (entry.action !== \"permit\") return false;\n  if (!normalizedService) return true;\n  if (entry.normalized_service === normalizedService) return true;\n\n  if ([\"hr\", \"finance\", \"it\", \"staff\", \"guest\", \"servers\"].includes(normalizedService) &&\n      String(entry.destination_department || \"\").toLowerCase() === normalizedService.toLowerCase()) {\n    return true;\n  }\n\n  if (normalizedService === \"ubuntu_server\" || normalizedService === \"servers\") {\n    return /ubuntu|server|servers|192\\.168\\.50\\.|vlan50/i.test(entry.line || \"\");\n  }\n\n  return false;\n});\n\nlet policy_decision = \"unclear\";\nlet confidence = \"low\";\nlet employee_safe_summary = \"\";\nlet admin_review_needed = true;\nlet needs_clarification = false;\nlet clarification_question = \"\";\n\nif (firewallConfirmedBlock) {\n  policy_decision = \"restricted\";\n  confidence = \"high\";\n  admin_review_needed = false;\n  employee_safe_summary = `It looks like ${serviceLabel()} is blocked by the company's internet access policy, so it is not available from company devices right now.`;\n\n} else if (isGuestToInternal) {\n  policy_decision = \"restricted\";\n  confidence = \"high\";\n  admin_review_needed = false;\n  employee_safe_summary = `Sorry, you're currently on the Guest network, so access to other company departments is not allowed for guest users. \ud83d\ude0a`;\n\n} else if (isGuestAsTarget) {\n  policy_decision = \"unclear\";\n  confidence = \"low\";\n  admin_review_needed = true;\n  employee_safe_summary = `There are no restrictions preventing ${requestedDept || \"your department\"} from reaching the Guest network. If connectivity is failing, this is likely a network issue that requires administrator investigation.`;\n\n} else if (isServerAccessIssue) {\n  policy_decision = \"unclear\";\n  confidence = \"low\";\n  admin_review_needed = true;\n  employee_safe_summary = `There are no restrictions preventing ${requestedDept || \"your department\"} from accessing ${serviceLabel()}. This appears to be a connectivity or server availability issue that requires administrator investigation.`;\n\n} else if (isInternalToInternal) {\n  policy_decision = \"unclear\";\n  confidence = \"low\";\n  admin_review_needed = true;\n  employee_safe_summary = `There are no restrictions between internal departments. If ${requestedDept} cannot reach ${serviceLabel()}, this is likely a network connectivity issue that requires administrator investigation.`;\n\n} else if (!requestedDept && isInternalStyle()) {\n  needs_clarification = true;\n  admin_review_needed = false;\n  employee_safe_summary = \"I need a bit more information before I can check the access policy.\";\n  clarification_question = \"Which department or network is this device in?\";\n\n} else if (matchingAclDeny) {\n  policy_decision = \"restricted\";\n  confidence = \"high\";\n  admin_review_needed = false;\n  employee_safe_summary = `${requestedDept} appears to be restricted from reaching ${serviceLabel()} under the current network access policy.`;\n\n} else if (matchingAclPermit) {\n  policy_decision = \"allowed\";\n  confidence = \"medium\";\n  admin_review_needed = false;\n  employee_safe_summary = `${requestedDept} should be able to reach ${serviceLabel()} under the current policy. If it is still not working, this may be a connectivity issue that needs administrator investigation.`;\n\n} else if (!requestedDept) {\n  needs_clarification = true;\n  admin_review_needed = false;\n  employee_safe_summary = `I could not determine which department or network this device belongs to.`;\n  clarification_question = \"Which department or network is this device in?\";\n\n} else {\n  policy_decision = \"unknown\";\n  confidence = \"low\";\n  admin_review_needed = true;\n  employee_safe_summary = `I could not find a policy covering access to ${serviceLabel()} in the current firewall or network rules. This will be logged for administrator review.`;\n}\n\nreturn {\n  json: {\n    ...$json,\n    department: requestedDept || currentDepartment,\n    requested_service: currentRequestedService,\n    normalized_requested_service: normalizedService,\n    policy_snapshot: snapshot,\n    policy_decision,\n    confidence,\n    employee_safe_summary,\n    admin_review_needed,\n    needs_clarification,\n    clarification_question,\n    policy_analysis: {\n      requested_department: requestedDept,\n      requested_service: requestedService,\n      normalized_requested_service: normalizedService,\n      firewall_hits: firewallSources.length,\n      acl_hits: aclSources.length,\n      any_firewall_deny_for_service: !!anyFirewallDenyForService,\n      matched_acl_deny: !!matchingAclDeny,\n      matched_acl_permit: !!matchingAclPermit,\n      tool_items_found: toolItems.length,\n      firewall_confirmed_block: firewallConfirmedBlock,\n      is_guest_to_internal: isGuestToInternal,\n      is_guest_as_target: isGuestAsTarget,\n      is_server_access_issue: isServerAccessIssue,\n      is_internal_to_internal: isInternalToInternal,\n      is_guest_source_dept: isGuestSourceDept\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        144
+      ],
+      "id": "62bb49eb-7258-49df-ae31-30a3fa7f8de1",
+      "name": "Build Policy Snapshot Topology"
+    },
+    {
+      "parameters": {
+        "jsCode": "let final_reply = \"\";\nlet escalate_policy_case = false;\nlet needs_clarification = false;\n\n// Check if identity is already complete\nconst hasName = String($json.employee_name || \"\").trim().length > 0;\nconst hasEmpNum = String($json.employee_number || \"\").trim().length > 0;\nconst hasEmail = String($json.email || \"\").trim().length > 0;\nconst hasDept = String($json.department || \"\").trim().length > 0;\nconst identityComplete = hasName && hasEmpNum && hasEmail && hasDept;\n\nif ($json.policy_decision === \"restricted\") {\n  // Clear policy evidence \u2014 tell the employee directly, no case needed\n  final_reply =\n    $json.employee_safe_summary ||\n    \"Access appears to be restricted by current company policy.\";\n  escalate_policy_case = false;\n\n} else if ($json.policy_decision === \"allowed\") {\n  // Policy says allowed \u2014 might still be a technical issue\n  final_reply =\n    $json.employee_safe_summary ||\n    \"Access appears to be allowed under the current company policy. If it is still failing, it may be a technical issue.\";\n  escalate_policy_case = false;\n\n} else if ($json.needs_clarification) {\n  // Need more info before checking policy\n  final_reply =\n    $json.clarification_question ||\n    \"I need a bit more information before I can confirm the policy.\";\n  escalate_policy_case = false;\n  needs_clarification = true;\n\n} else if ($json.admin_review_needed && identityComplete) {\n  // Policy unclear or network issue AND we already have all identity details\n  // Skip asking for identity \u2014 go straight to logging\n  final_reply = \"\";\n  escalate_policy_case = true;\n\n} else if ($json.admin_review_needed && !identityComplete) {\n  // Policy unclear or network issue but identity is incomplete \u2014 ask for it\n  final_reply =\n    ($json.employee_safe_summary ||\n      \"I could not confirm the current policy confidently.\") +\n    \" If needed, I can send this for administrator review.\";\n  escalate_policy_case = true;\n\n} else {\n  final_reply =\n    ($json.employee_safe_summary ||\n      \"I could not confirm the current policy confidently.\") +\n    \" If needed, I can send this for administrator review.\";\n  escalate_policy_case = true;\n}\n\nreturn {\n  json: {\n    ...$json,\n    final_reply,\n    escalate_policy_case,\n    needs_clarification,\n    identity_complete: identityComplete\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        144
+      ],
+      "id": "cc5d9ecf-9080-4671-92b8-22a6e4f400d0",
+      "name": "Validate policy decision"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e260c257-ea49-4e25-8adb-0fcf62ac3c57",
+              "leftValue": "={{ $json.escalate_policy_case }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1312,
+        176
+      ],
+      "id": "a67aaafd-850c-4dd2-99bd-e34e22073ed2",
+      "name": "Policy Needs Admin Review?"
+    },
+    {
+      "parameters": {
+        "model": "qwen3-coder:30b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -704,
+        656
+      ],
+      "id": "de901f2f-031f-4ae6-9bef-8c1a277ab392",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "MMvmBj7kbeiybMTZ",
+          "name": "Proxmox Dube Ollama"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        704,
+        64
+      ],
+      "id": "b9ee5811-06ee-42c5-9997-d3b7253d6f3b",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "pqYsWpg85QHRalPl",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/pqYsWpg85QHRalPl",
+          "cachedResultName": "get_acl_list"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {}
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        432,
+        176
+      ],
+      "id": "1f2c8b5c-9402-4eb6-8c31-84f6c2cd410f",
+      "name": "Call 'get_acl_list'1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "10bd670d-07e5-41eb-96fd-34b901579d72",
+              "leftValue": "={{ $json.identity_complete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1728,
+        160
+      ],
+      "id": "48112485-c30b-470b-9ff1-db5a8f7d255a",
+      "name": "Identity Already Complete?"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "xd9sLqpgG3uZi1EG",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/xd9sLqpgG3uZi1EG",
+          "cachedResultName": "get_firewall_rules_workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {}
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        416,
+        -48
+      ],
+      "id": "5dbf544f-ece0-4dac-8153-f265b876b56c",
+      "name": "Call 'get_firewall_rules_workflow'1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        608
+      ],
+      "id": "71024c2f-8d7d-42af-8377-02eba28c8805",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "8UBS7OFXUfuBmJO0",
+          "name": "Gemini Dube"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Output": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Call 'get_firewall_rules_workflow'1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Call 'get_acl_list'1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Contact Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Case Record": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Contact Details": {
+      "main": [
+        [
+          {
+            "node": "Check Identity Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent2": {
+      "main": [
+        [
+          {
+            "node": "Ask Clarification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent3": {
+      "main": [
+        [
+          {
+            "node": "General Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Identity Complete": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Build Case Record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask for Identity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Reply Case logged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Policy Snapshot Topology": {
+      "main": [
+        [
+          {
+            "node": "Validate policy decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate policy decision": {
+      "main": [
+        [
+          {
+            "node": "Policy Needs Admin Review?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policy Needs Admin Review?": {
+      "main": [
+        [
+          {
+            "node": "Identity Already Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Policy Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Build Policy Snapshot Topology",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'get_acl_list'1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Identity Already Complete?": {
+      "main": [
+        [
+          {
+            "node": "Build Case Record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Contact Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'get_firewall_rules_workflow'1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "296f5c9a-2032-499d-b146-a887ec6b62ee",
+  "versionCounter": 308,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-05-03T11:41:00.618Z",
+      "createdAt": "2026-05-03T11:41:00.618Z",
+      "role": "workflow:owner",
+      "workflowId": "1ZYF1t3B4G1Sd9DC",
+      "projectId": "Cn6cqZj3eh81Llze",
+      "project": {
+        "updatedAt": "2025-11-29T17:35:11.160Z",
+        "createdAt": "2025-11-29T13:20:23.933Z",
+        "id": "Cn6cqZj3eh81Llze",
+        "name": "Mlandvo Nkambule <nmlandvo3@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "projectRelations": [
+          {
+            "updatedAt": "2025-11-29T13:20:23.934Z",
+            "createdAt": "2025-11-29T13:20:23.934Z",
+            "userId": "24503047-5a1e-4e16-a5a3-3c21d5068680",
+            "projectId": "Cn6cqZj3eh81Llze",
+            "user": {
+              "updatedAt": "2026-05-14T12:55:13.000Z",
+              "createdAt": "2025-11-29T13:20:23.930Z",
+              "id": "24503047-5a1e-4e16-a5a3-3c21d5068680",
+              "email": "nmlandvo3@gmail.com",
+              "firstName": "Mlandvo",
+              "lastName": "Nkambule",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2025-11-29T17:35:25.080Z",
+                "personalization_survey_n8n_version": "1.121.3"
+              },
+              "settings": {
+                "firstSuccessfulWorkflowId": "ZsafyvYkqYWF0qv5",
+                "userActivated": true,
+                "userActivatedAt": 1765710800202,
+                "npsSurvey": {
+                  "responded": true,
+                  "lastShownAt": 1768713175748
+                },
+                "easyAIWorkflowOnboarded": true
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2026-05-14",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": []
+}

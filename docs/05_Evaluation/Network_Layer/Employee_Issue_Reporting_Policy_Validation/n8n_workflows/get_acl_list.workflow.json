@@ -1,0 +1,146 @@
+{
+  "updatedAt": "2026-05-14T14:22:33.000Z",
+  "createdAt": "2026-04-30T12:39:31.892Z",
+  "id": "pqYsWpg85QHRalPl",
+  "name": "get_acl_list",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -304,
+        -16
+      ],
+      "id": "ff6150bf-a5ff-4013-90f9-09c910eb3b11",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "command": "/home/mlandvo/GNS3/projects/venv/bin/python /home/mlandvo/GNS3/projects/get_acl_list.py"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        -16
+      ],
+      "id": "41f79bc7-81a7-4084-a3a0-1da8fee1db3e",
+      "name": "Execute a command",
+      "credentials": {
+        "sshPassword": {
+          "id": "y7amMBhieGML1Mun",
+          "name": "SSH Password account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw = $json.stdout || \"\";\n\nlet parsed;\n\ntry {\n  parsed = JSON.parse(raw);\n} catch (e) {\n  parsed = {\n    status: \"error\",\n    output: raw\n  };\n}\n\nconst output = parsed.output || \"\";\n\nconst lines = output\n  .split(\"\\n\")\n  .map(line => line.trim())\n  .filter(line =>\n    line &&\n    !line.startsWith(\"show access-lists\") &&\n    !line.startsWith(\"R2#\")\n  );\n\nlet message = \"\ud83d\udccb ACL Report from R2\\n\\n\";\n\nif (parsed.status !== \"success\") {\n  message += `\u274c Status: ERROR\\n`;\n  message += `Message: ${parsed.message || output || \"Unknown error\"}`;\n} else if (lines.length === 0) {\n  message += \"No ACL entries found.\";\n} else {\n  for (const line of lines) {\n    if (line.startsWith(\"Extended IP access list\")) {\n      message += `\\n\ud83d\udd10 ${line}\\n`;\n    } else if (line.includes(\"deny ip\")) {\n      message += `\u26d4 ${line}\\n`;\n    } else if (line.includes(\"permit ip\")) {\n      message += `\u2705 ${line}\\n`;\n    } else {\n      message += `\u2022 ${line}\\n`;\n    }\n  }\n}\n\nreturn {\n  json: {\n    status: parsed.status || \"success\",\n    clean_message: message\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        -16
+      ],
+      "id": "5fb65b28-7ce6-4c4b-996f-645cc3ca2281",
+      "name": "Get ACL List"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Execute a command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a command": {
+      "main": [
+        [
+          {
+            "node": "Get ACL List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "42a4e8d1-84a3-4985-a764-a1722091695e",
+  "versionCounter": 5,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2026-04-30T12:39:31.893Z",
+      "createdAt": "2026-04-30T12:39:31.893Z",
+      "role": "workflow:owner",
+      "workflowId": "pqYsWpg85QHRalPl",
+      "projectId": "Cn6cqZj3eh81Llze",
+      "project": {
+        "updatedAt": "2025-11-29T17:35:11.160Z",
+        "createdAt": "2025-11-29T13:20:23.933Z",
+        "id": "Cn6cqZj3eh81Llze",
+        "name": "Mlandvo Nkambule <nmlandvo3@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "projectRelations": [
+          {
+            "updatedAt": "2025-11-29T13:20:23.934Z",
+            "createdAt": "2025-11-29T13:20:23.934Z",
+            "userId": "24503047-5a1e-4e16-a5a3-3c21d5068680",
+            "projectId": "Cn6cqZj3eh81Llze",
+            "user": {
+              "updatedAt": "2026-05-14T12:55:13.000Z",
+              "createdAt": "2025-11-29T13:20:23.930Z",
+              "id": "24503047-5a1e-4e16-a5a3-3c21d5068680",
+              "email": "nmlandvo3@gmail.com",
+              "firstName": "Mlandvo",
+              "lastName": "Nkambule",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2025-11-29T17:35:25.080Z",
+                "personalization_survey_n8n_version": "1.121.3"
+              },
+              "settings": {
+                "firstSuccessfulWorkflowId": "ZsafyvYkqYWF0qv5",
+                "userActivated": true,
+                "userActivatedAt": 1765710800202,
+                "npsSurvey": {
+                  "responded": true,
+                  "lastShownAt": 1768713175748
+                },
+                "easyAIWorkflowOnboarded": true
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2026-05-14",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": []
+}
