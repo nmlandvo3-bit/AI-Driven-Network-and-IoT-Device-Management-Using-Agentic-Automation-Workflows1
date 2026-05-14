@@ -12,7 +12,7 @@ This summary is built from:
 - preserved project notes from earlier work on the GNS3 environment;
 - the local file `gns3 ubuntu sever.md`;
 - the VLAN Python automation script evidence;
-- workflow command references inside `Admin Network Operations Bot 1`;
+- workflow command references inside `Admin Network Operations Bot`;
 - a fresh live GNS3 API pull from the active server during this documentation update.
 
 ## Project files included in this folder

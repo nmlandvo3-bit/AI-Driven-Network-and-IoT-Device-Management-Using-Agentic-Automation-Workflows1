@@ -1,6 +1,6 @@
 # Python Scripts
 
-This folder contains the Python automation used by the **Admin Network Operations Bot 1** workflow.
+This folder contains the Python automation used by the **Admin Network Operations Bot** workflow.
 
 ## Important security rule
 
@@ -33,7 +33,7 @@ The script handled two main actions:
 The full path was:
 
 1. Telegram admin sends a command such as `create vlan 80 Research` or `delete vlan 80`
-2. `Admin Network Operations Bot 1` routes the request
+2. `Admin Network Operations Bot` routes the request
 3. the child workflow `vlans` receives the VLAN action
 4. the child workflow runs the Python automation logic
 5. the Python script connects through the firewall/jump path

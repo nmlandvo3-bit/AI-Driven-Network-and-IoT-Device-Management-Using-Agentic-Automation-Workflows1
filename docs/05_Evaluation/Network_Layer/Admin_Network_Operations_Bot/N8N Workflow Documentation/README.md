@@ -1,8 +1,8 @@
-# Admin Network Operations Bot 1
+# Admin Network Operations Bot
 
 ## Scope of this subsection
 
-This subsection documents the **Network Layer evaluation work** for the workflow **Admin Network Operations Bot 1**.
+This subsection documents the **Network Layer evaluation work** for the workflow **Admin Network Operations Bot**.
 
 Following the Level 5 evaluation rules:
 
@@ -12,7 +12,7 @@ Following the Level 5 evaluation rules:
 
 ## What this workflow is about
 
-**Admin Network Operations Bot 1** is an administrator-facing **n8n + Telegram workflow** that supports:
+**Admin Network Operations Bot** is an administrator-facing **n8n + Telegram workflow** that supports:
 
 1. **network case management**;
 2. **read-only network visibility tasks** such as showing VLANs and denied logs;
@@ -31,7 +31,7 @@ Location:
 
 Included workflow exports:
 
-- `Workflow JSON/Admin Network Operations Bot 1.json` - main workflow
+- `Workflow JSON/Admin Network Operations Bot.json` - main workflow
 - `Workflow JSON/show_vlans_workflow.json` - child workflow for VLAN inventory
 - `Workflow JSON/vlans.json` - child workflow for VLAN create/delete operations
 - `Workflow JSON/get_firewall_logs_users.json` - child workflow for denied-log retrieval

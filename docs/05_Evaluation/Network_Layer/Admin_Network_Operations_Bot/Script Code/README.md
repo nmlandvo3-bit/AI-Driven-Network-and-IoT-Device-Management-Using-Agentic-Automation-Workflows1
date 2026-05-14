@@ -1,6 +1,6 @@
 # Script Code
 
-This folder contains the script evidence for the **Admin Network Operations Bot 1** evaluation write-up.
+This folder contains the script evidence for the **Admin Network Operations Bot** evaluation write-up.
 
 ## What is included
 

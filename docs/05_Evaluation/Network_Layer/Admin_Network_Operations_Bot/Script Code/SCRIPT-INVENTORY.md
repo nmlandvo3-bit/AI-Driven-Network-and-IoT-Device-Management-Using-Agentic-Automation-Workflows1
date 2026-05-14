@@ -1,6 +1,6 @@
 # Script Inventory
 
-This folder stores extracted script logic for **Admin Network Operations Bot 1**.
+This folder stores extracted script logic for **Admin Network Operations Bot**.
 
 ## Code Nodes
 

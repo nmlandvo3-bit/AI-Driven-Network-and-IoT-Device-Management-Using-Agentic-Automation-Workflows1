@@ -1,6 +1,6 @@
 # Suggested Test Cases and Evidence Checklist
 
-This file is a ready-to-use evaluation checklist for **Admin Network Operations Bot 1**.
+This file is a ready-to-use evaluation checklist for **Admin Network Operations Bot**.
 
 ## Documentation rule reminder
 

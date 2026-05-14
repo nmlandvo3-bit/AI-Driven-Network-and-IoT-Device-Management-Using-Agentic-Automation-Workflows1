@@ -1,6 +1,6 @@
 # GNS3 Project Files
 
-This folder stores the actual GNS3 project file evidence for the lab used by **Admin Network Operations Bot 1**.
+This folder stores the actual GNS3 project file evidence for the lab used by **Admin Network Operations Bot**.
 
 ## Included files
 
