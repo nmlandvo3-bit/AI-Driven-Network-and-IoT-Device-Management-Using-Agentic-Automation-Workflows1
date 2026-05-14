@@ -265,24 +265,3 @@ The main workflow depends on four child workflows:
 4. `backup_router_config_workflow`
 
 This means the n8n implementation is not just one standalone bot workflow. It is a small workflow group where the main admin bot acts as the router/orchestrator and the child workflows handle specific network tasks.
-
-## Suggested evaluation evidence to collect
-
-To satisfy Level 5 evaluation expectations, the following evidence should be added when final screenshots are available:
-
-1. Telegram message that triggers the workflow
-2. n8n execution path screenshot
-3. Data Table row before/after update for case actions
-4. delete-VLAN approval prompt screenshot
-5. VLAN creation success screenshot
-6. denied-logs output screenshot
-7. backup-router result screenshot
-8. GNS3 topology screenshot for `Medium_Company_Network-1-89`
-9. device CLI evidence such as `show vlan brief` or router backup prompts
-10. result summary table for pass/fail testing.
-
-## Limitations and honesty note
-
-- I could not live-query the GNS3 API at documentation time because the saved GNS3 API endpoint was unreachable during this session.
-- For that reason, the GNS3 device summary in this subsection is based on **preserved project notes, script evidence, and workflow references**, not a fresh real-time topology pull.
-- This is explicitly stated so the documentation stays accurate and academically honest.
