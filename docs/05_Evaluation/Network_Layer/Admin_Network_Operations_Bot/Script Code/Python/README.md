@@ -13,6 +13,21 @@ So in this folder:
 - live management IPs used only for secret access paths are replaced with placeholders;
 - the workflow logic is preserved for evaluation/documentation purposes.
 
+## Runtime requirement: Python virtual environment
+
+These Python scripts were run from a dedicated **Python virtual environment (venv)**.
+
+This matters because the scripts depend on installed Python packages such as `netmiko` and related libraries. Without activating the correct virtual environment first, the scripts may fail to run because the required modules will not be available.
+
+The usage pattern preserved from the working environment was:
+
+```bash
+source /home/mlandvo/Documents/python_scripts/venv/bin/activate
+/home/mlandvo/Documents/python_scripts/venv/bin/python /home/mlandvo/GNS3/projects/<script_name>.py ...
+```
+
+In other words, these scripts should be documented as **venv-dependent automation scripts** rather than plain standalone Python files.
+
 ## Python scripts used
 
 ### 1. `vlan_manager.sanitized.py`

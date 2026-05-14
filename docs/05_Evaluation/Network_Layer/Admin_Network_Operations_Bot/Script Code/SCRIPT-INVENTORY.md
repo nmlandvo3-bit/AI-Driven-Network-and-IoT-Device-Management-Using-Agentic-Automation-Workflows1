@@ -32,6 +32,7 @@ This folder stores extracted script logic for **Admin Network Operations Bot**.
 
 ## Notes
 
-- The extracted files come from the local workflow export `admin_network_operations_bot_1.after-backup-route.json` and the local Python automation script `vlan_manager.py`.
+- The extracted files come from the local workflow export `admin_network_operations_bot_1.after-backup-route.json`, the local Python automation script `vlan_manager.py`, and the additional workflow-support Python files preserved under `/home/mlandvo/GNS3/projects`.
+- The Python scripts were run from a dedicated virtual environment, so they should be treated as **venv-dependent** scripts rather than plain standalone Python files.
 - Secrets were intentionally removed from the stored script copy.
 - Child workflow exports are referenced in the documentation but are not re-committed here because this subsection is focused on evaluation documentation and script evidence.
