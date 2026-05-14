@@ -4,16 +4,6 @@
 
 - **GNS3 project name:** `Medium_Company_Network-1-89`
 
-## Evidence basis used in this document
-
-This summary is built from:
-
-- preserved project notes from earlier work on the GNS3 environment;
-- the local file `gns3 ubuntu sever.md`;
-- the VLAN Python automation script evidence;
-- workflow command references inside `Admin Network Operations Bot`;
-- a fresh live GNS3 API pull from the active server during this documentation update.
-
 ## Project files included in this folder
 
 A `Project Files/` subfolder is now included so this section stores the actual project file evidence used for the lab:
