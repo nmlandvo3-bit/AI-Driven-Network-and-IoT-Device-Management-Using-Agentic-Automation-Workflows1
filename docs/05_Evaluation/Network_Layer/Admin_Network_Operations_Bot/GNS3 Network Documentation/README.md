@@ -3,7 +3,6 @@
 ## Project used for this workflow path
 
 - **GNS3 project name:** `Medium_Company_Network-1-89`
-- **Saved project ID from prior project notes:** `093cbefe-c972-444b-bba4-6e08a90959b4`
 
 ## Evidence basis used in this document
 
@@ -161,10 +160,4 @@ The broader project report also documents enterprise-style VLAN segmentation con
 
 For this specific workflow subsection, the strongest directly evidenced VLANs are the switch VLANs listed in the table above and the Ubuntu server placement in **VLAN 50 (SERVERS)**.
 
-## What this means for the workflow evaluation
-
-The workflow is not just a chatbot demo. Its actions are tied to a simulated enterprise lab where:
-
-- VLAN changes target a real switch object in GNS3;
-- router backups target an Ubuntu TFTP server inside the same simulated network;
 - the automation path reflects actual network management tasks rather than placeholder text-only responses.
