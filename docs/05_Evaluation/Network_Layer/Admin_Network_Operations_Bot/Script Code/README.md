@@ -6,6 +6,7 @@ This folder contains the script evidence for the **Admin Network Operations Bot 
 
 - extracted **n8n Code node** logic from the main admin workflow;
 - a **sanitized Python VLAN automation script** used by the VLAN execution path;
+- a **Python README** explaining how the SSH/jump-based automation was used without exposing live credentials;
 - a **script inventory** that maps each extracted file back to its source node and purpose.
 
 ## Important rule followed here

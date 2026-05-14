@@ -23,6 +23,7 @@ This folder stores extracted script logic for **Admin Network Operations Bot 1**
 | File | Purpose |
 | --- | --- |
 | `Python/vlan_manager.sanitized.py` | Sanitized version of the Python VLAN automation script used by the VLAN child workflow. Credentials and live IPs are replaced with placeholders to comply with repository rules. |
+| `Python/README.md` | Explains how the Python automation was used in the workflow and documents the SSH/jump path without exposing live credentials. |
 
 ## Notes
 
