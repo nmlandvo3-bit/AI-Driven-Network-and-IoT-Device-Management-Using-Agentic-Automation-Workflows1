@@ -53,7 +53,7 @@ It should **not** contain secrets.
 
 | Scenario ID | Date tested | Example Input | Actual result | Pass/Fail | Evidence file / screenshot |
 | --- | --- | --- | --- | --- | --- |
-| NET-ADM-01 | 15/05/2026 | hello | Menu | Pass |  |
+| NET-ADM-01 | 15/05/2026 | hello | Menu | Pass | ![image alt](https://github.com/hualiguide/MLAB-Project/blob/1fe005554c2bdb73b00ec424aa688d8bce905e87/docs/05_Evaluation/Network_Layer/Admin_Network_Operations_Bot/Screenshots/Menu.png) |
 | NET-ADM-02 | 15/05/2026 | show open cases | Open cases are listed | Pass |  |
 | NET-ADM-03 | 15/05/2026 | show cases HR | Only HR cases are shown | Pass |  |
 | NET-ADM-04 | 15/05/2026 | View one case	 | Full case detail is returned | Pass |  |
