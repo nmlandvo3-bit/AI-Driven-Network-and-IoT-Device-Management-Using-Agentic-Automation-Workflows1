@@ -1,17 +1,17 @@
-# Suggested Test Cases and Evidence Checklist
+# Test Cases and Evidence Checklist
 
 This file is a ready-to-use evaluation checklist for **Admin Network Operations Bot**.
 
 ## Documentation rule reminder
 
-This repository subsection should contain:
+This repository subsection should contains:
 
 - workflow documentation
 - test cases
 - screenshots/evidence references
 - scripts used in the evaluation.
 
-It should **not** contain secrets.
+It does **not** contain secrets.
 
 ## Test case table
 
@@ -31,23 +31,6 @@ It should **not** contain secrets.
 | NET-ADM-12 | Get denied logs | `get denied logs` | Firewall/log summary is returned | Telegram output + n8n child workflow run |
 | NET-ADM-13 | Backup router config | `backup R2 both` | Backup child workflow stores config files to Ubuntu TFTP | Telegram output + TFTP file evidence |
 | NET-ADM-14 | Help / fallback | `hello` or unclear text | Workflow returns supported-action guidance | Telegram output |
-
-## Screenshot checklist
-
-- [ ] Telegram trigger message
-- [ ] AI-parsed / routed n8n execution
-- [ ] `cases` Data Table screenshot
-- [ ] `admin_actions` Data Table screenshot
-- [ ] `diagnostic_logs` Data Table screenshot
-- [ ] delete approval prompt
-- [ ] create-VLAN result
-- [ ] delete-VLAN result
-- [ ] denied-logs result
-- [ ] backup-router result
-- [ ] GNS3 topology screenshot
-- [ ] switch CLI screenshot (`show vlan brief` or related)
-- [ ] router TFTP backup screenshot
-- [ ] Ubuntu TFTP file screenshot
 
 ## Result recording template
 
