@@ -13,5 +13,5 @@ This folder contains the evaluation documentation for the **Admin Network Operat
 - `Script Code/`
   - extracted scripts and code used by the workflow
 - `TEST_CASES_AND_EVIDENCE.md`
-  - evaluation checklist, test cases, and evidence tracker
+  - test cases, and evidence results
 
