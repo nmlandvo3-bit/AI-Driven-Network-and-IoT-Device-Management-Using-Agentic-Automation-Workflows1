@@ -51,19 +51,19 @@ It should **not** contain secrets.
 
 ## Result recording template
 
-| Scenario ID | Date tested | Expected result | Actual result | Pass/Fail | Evidence file / screenshot |
+| Scenario ID | Date tested | Example Input | Actual result | Pass/Fail | Evidence file / screenshot |
 | --- | --- | --- | --- | --- | --- |
-| NET-ADM-01 |  |  |  |  |  |
-| NET-ADM-02 |  |  |  |  |  |
-| NET-ADM-03 |  |  |  |  |  |
-| NET-ADM-04 |  |  |  |  |  |
-| NET-ADM-05 |  |  |  |  |  |
-| NET-ADM-06 |  |  |  |  |  |
-| NET-ADM-07 |  |  |  |  |  |
-| NET-ADM-08 |  |  |  |  |  |
-| NET-ADM-09 |  |  |  |  |  |
-| NET-ADM-10 |  |  |  |  |  |
-| NET-ADM-11 |  |  |  |  |  |
-| NET-ADM-12 |  |  |  |  |  |
-| NET-ADM-13 |  |  |  |  |  |
-| NET-ADM-14 |  |  |  |  |  |
+| NET-ADM-01 | 15/05/2026 | hello | Menu | Pass |  |
+| NET-ADM-02 | 15/05/2026 | show open cases | Open cases are listed | Pass |  |
+| NET-ADM-03 | 15/05/2026 | show cases HR | Only HR cases are shown | Pass |  |
+| NET-ADM-04 | 15/05/2026 | View one case	 | Full case detail is returned | Pass |  |
+| NET-ADM-05 | 15/05/2026 | Diagnose a case | Diagnostic plan is returned and logged | Pass |  |
+| NET-ADM-06 | 15/05/2026 | Update case status | Case status changes | Pass |  |
+| NET-ADM-07 | 15/05/2026 | Resolve case | Case becomes resolved and email is sent | Pass |  |
+| NET-ADM-08 | 15/05/2026 | Show VLANs | VLAN summary is returned  | Pass |  |
+| NET-ADM-09 | 15/05/2026 | Create VLAN | VLAN is created and success message returns | Pass |  |
+| NET-ADM-10 | 15/05/2026 | Delete VLAN approval prompt | Workflow creates pending approval record and asks for YES/NO | Pass |  |
+| NET-ADM-11 | 15/05/2026 | Delete VLAN approved | VLAN delete | Pass |  |
+| NET-ADM-12 | 15/05/2026 | Delete VLAN rejected | Delete is cancelled and no network change occurs | Pass |  |
+| NET-ADM-13 | 15/05/2026 | Get firewall logs | Firewall/log summary is returned | Pass |  |
+| NET-ADM-14 | 15/05/2026 | Backup router config | Backup child workflow stores config files to Ubuntu TFTP | Pass |  |
